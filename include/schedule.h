@@ -9,8 +9,12 @@
 class Schedule
 {
 public:
-    //TODO : more kinds of constructors to construct different Schedules from one Pattern
-    Schedule(const Pattern& pattern, bool& is_pattern_valid, int performance_modeling_type, int restricts_type, bool use_in_exclusion_optimize, int v_cnt, unsigned int e_cnt, long long tri_cnt = 0);
+    //TODO : more kinds of constructors to construct different Schedules from
+    // one Pattern
+    Schedule(const Pattern& pattern, bool& is_pattern_valid,
+             int performance_modeling_type, int restricts_type,
+             bool use_in_exclusion_optimize, int v_cnt, unsigned int e_cnt,
+             long long tri_cnt = 0);
     // performance_modeling type = 0 : not use modeling
     //                      type = 1 : use our modeling
     //                      type = 2 : use GraphZero's modeling

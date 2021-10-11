@@ -11,7 +11,7 @@ Pattern::Pattern(int _size, bool clique)
     size = _size;
     adj_mat = new int[size * size];
     memset(adj_mat, 0, size * size * sizeof(int));
-
+    // 全联通
     if( clique ) {
         for(int i = 0; i < size; ++i)
             for(int j = 0; j < i; ++j)
@@ -23,7 +23,7 @@ Pattern::Pattern(int _size, char *buffer) {
     size = _size;
     adj_mat = new int[size * size];
     memset(adj_mat, 0, size * size * sizeof(int));
-
+    // 根据buffer内容加边
     for(int i = 0; i < size; ++i)
         for(int j = 0; j < size; ++j)
             if(buffer[INDEX(i,j,size)] == '1')
@@ -35,6 +35,7 @@ Pattern::~Pattern()
     delete[] adj_mat;
 }
 
+// 复制构造函数
 Pattern::Pattern(const Pattern& p)
 {
     size = p.get_size();
@@ -42,6 +43,7 @@ Pattern::Pattern(const Pattern& p)
     memcpy(adj_mat, p.get_adj_mat_ptr(), size * size * sizeof(int));
 }
 
+// 使用给定模式
 Pattern::Pattern(PatternType type) {
     if( type == PatternType::Rectangle) {
         size = 4;

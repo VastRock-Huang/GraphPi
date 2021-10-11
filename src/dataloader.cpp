@@ -4,7 +4,9 @@
 #include "../include/common.h"
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 
+// 加载图数据
 bool DataLoader::load_data(Graph* &g, DataType type, const char* path, int oriented_type) {
     if(type == Patents || type == Orkut || type == complete8 || type == LiveJournal || type == MiCo || type == CiteSeer || type == Wiki_Vote) {
         return general_load_data(g, type, path, oriented_type);
@@ -18,6 +20,7 @@ bool DataLoader::load_data(Graph* &g, DataType type, const char* path, int orien
 }
 
 bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, int oriented_type) {
+    // 读取数据集到标准输入
     if (freopen(path, "r", stdin) == NULL)
     {
         printf("File not found. %s\n", path);
@@ -57,11 +60,12 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
             break;
         }
     }
-
+    // 读取图的结点数和边数
     scanf("%d%u",&g->v_cnt,&g->e_cnt);
+    // 记录结点的度
     int* degree = new int[g->v_cnt];
     memset(degree, 0, g->v_cnt * sizeof(int));
-    g->e_cnt *= 2;
+    g->e_cnt *= 2;  // 可能是无向图边*2
     std::pair<int,int> *e = new std::pair<int,int>[g->e_cnt];
     id.clear();
     int x,y;
@@ -69,17 +73,21 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     unsigned int tmp_e;
     tmp_v = 0;
     tmp_e = 0;
+    // 加载图数据
     while(scanf("%d%d",&x,&y)!=EOF) {
+        // 读取时过滤自环边
         if(x == y) {
             printf("find self circle\n");
             g->e_cnt -=2;
             continue;
             //return false;
         }
+        // 使用map和tmp_v来压缩结点集
         if(!id.count(x)) id[x] = tmp_v ++;
         if(!id.count(y)) id[y] = tmp_v ++;
         x = id[x];
         y = id[y];
+        // 添加边
         e[tmp_e++] = std::make_pair(x,y);
         e[tmp_e++] = std::make_pair(y,x);
         ++degree[x];
@@ -94,12 +102,16 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     //               == 1 high degree first
     //               == 2 low degree first
     if ( oriented_type != 0 ) {
+        // 结点-结点度数 对
         std::pair<int,int> *rank = new std::pair<int,int>[g->v_cnt];
         int *new_id = new int[g->v_cnt];
         for(int i = 0; i < g->v_cnt; ++i) rank[i] = std::make_pair(i,degree[i]);
+        // 按结点度数排序
         if( oriented_type == 1) std::sort(rank, rank + g->v_cnt, cmp_degree_gt);
         if( oriented_type == 2) std::sort(rank, rank + g->v_cnt, cmp_degree_lt);
+        // newid数组用于将原id替换为排名
         for(int i = 0; i < g->v_cnt; ++i) new_id[rank[i].first] = i;
+        // 替换所有边
         for(unsigned int i = 0; i < g->e_cnt; ++i) {
             e[i].first = new_id[e[i].first];
             e[i].second = new_id[e[i].second];
@@ -107,12 +119,16 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
         delete[] rank;
         delete[] new_id;
     }
+    // 对结点度数组从小到大排序
     std::sort(degree, degree + g->v_cnt);
 
+    // 交集最大度数
     // The max size of intersections is the second largest degree.
-    //TODO VertexSet::max_intersection_size has different value with different dataset, but we use a static variable now.
-    VertexSet::max_intersection_size = std::max( VertexSet::max_intersection_size, degree[g->v_cnt - 2]);
-    g->max_degree = degree[g->v_cnt - 1];
+    //TODO VertexSet::max_intersection_size has different value with
+    // different dataset, but we use a static variable now.
+    VertexSet::max_intersection_size = std::max(VertexSet::max_intersection_size,
+                                                degree[g->v_cnt - 2]);
+    g->max_degree = degree[g->v_cnt - 1];   // 最大结点度数
     delete[] degree;
     if(tmp_v != g->v_cnt) {
         printf("vertex number error!\n");
@@ -126,33 +142,37 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
         delete[] e;
         return false;
     }
+    // 对边按结点升序排序去重
     std::sort(e,e+tmp_e,cmp_pair);
-    g->e_cnt = unique(e,e+tmp_e) - e;
-    for(unsigned int i = 0; i < g->e_cnt - 1; ++i)
-        if(e[i] == e[i+1]) {
+    g->e_cnt = std::unique(e,e+tmp_e) - e;  //  去重后边的实际数量
+    for(unsigned int i = 0; i < g->e_cnt - 1; ++i) {
+        if (e[i] == e[i + 1]) {
             printf("have same edge\n");
             fclose(stdin);
             delete g;
             delete[] e;
             return false;
         }
+    }
     g->edge = new int[g->e_cnt];
     g->vertex = new unsigned int[g->v_cnt + 1];
-    bool* have_edge = new bool[g->v_cnt];
+    bool* have_edge = new bool[g->v_cnt];   // 记录结点是否右边
     int lst_v = -1;
     for(int i = 0; i < g->v_cnt; ++i) have_edge[i] = false;
+    // CSR 存图法
     for(unsigned int i = 0; i < g->e_cnt; ++i) {
         if(e[i].first != lst_v) {
             have_edge[e[i].first] = true;
-            g->vertex[e[i].first] = i;
+            g->vertex[e[i].first] = i;  // vertex数组记录结点起始边索引, 下标为边的起点
         }
         lst_v = e[i].first;
-        g->edge[i] = e[i].second;
+        g->edge[i] = e[i].second;   // edge数组只记录边的终点
     }
     delete[] e;
     printf("Success! There are %d nodes and %u edges.\n",g->v_cnt,g->e_cnt);
     fflush(stdout);
     g->vertex[g->v_cnt] = g->e_cnt;
+    // 无边的情况
     for(int i = g->v_cnt - 1; i >= 0; --i)
         if(!have_edge[i]) {
             g->vertex[i] = g->vertex[i+1];

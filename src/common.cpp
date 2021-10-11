@@ -39,6 +39,7 @@ bool is_equal_adj_mat(const int* adj_mat1, const int* adj_mat2, int size) {
     return true;
 }
 
+// 获取数据集类型
 void GetDataType(DataType &type, const std::string str) {
     type = DataType::Invalid;
     

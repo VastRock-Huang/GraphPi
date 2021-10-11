@@ -69,7 +69,7 @@ int main(int argc,char *argv[]) {
     printf("Load data success!\n");
     fflush(stdout);
 
-    Pattern p(size, adj_mat);
+    Pattern p(size, adj_mat);   // 模式
     test_pattern(g, p, test_type, test_type, test_type);
     
     delete g;

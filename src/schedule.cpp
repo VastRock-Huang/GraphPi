@@ -6,26 +6,33 @@
 #include <assert.h>
 #include <algorithm>
 
-Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid, int performance_modeling_type, int restricts_type, bool use_in_exclusion_optimize ,int v_cnt, unsigned int e_cnt, long long tri_cnt)
+Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
+                   int performance_modeling_type, int restricts_type,
+                   bool use_in_exclusion_optimize ,int v_cnt,
+                   unsigned int e_cnt, long long tri_cnt)
 {
     if( performance_modeling_type != 0 && tri_cnt == -1) {
-        printf("Fatal: Can not use performance modeling if not have triangle number of this dataset.\n");
+        printf("Fatal: Can not use performance modeling if not "
+               "have triangle number of this dataset.\n");
         fflush(stdout);
         assert(0);
     }
 
     is_pattern_valid = true;
-    size = pattern.get_size();
+    size = pattern.get_size();  // 结点数
     adj_mat = new int[size * size];
-    
+
+    // 拷贝邻接矩阵
     // not use performance_modeling, simply copy the adj_mat from pattern
-    memcpy(adj_mat, pattern.get_adj_mat_ptr(), size * size * sizeof(int));
+    memcpy(adj_mat, pattern.get_adj_mat_ptr(),
+           size * size * sizeof(int));
 
     std::vector< std::pair<int,int> > best_pairs;
     best_pairs.clear();
     //Initialize adj_mat
     //If we use performance_modeling, we may change the order of vertex,
-    //the best order produced by performance_modeling(...) is saved in best_order[]
+    //the best order produced by performance_modeling(...) is saved in
+    // best_order[]
     //Finally, we use best_order[] to relocate adj_mat
     if( performance_modeling_type != 0) { 
         unsigned int pow = 1;
@@ -37,7 +44,8 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid, int performan
         bool use[size];
         for (int i = 0; i < size; ++i) use[i] = false;
         std::vector<int> tmp_vec;
-        get_full_permutation(candidate_permutations, use, tmp_vec, 0);
+        get_full_permutation(candidate_permutations, use,
+                             tmp_vec, 0);
         assert(candidate_permutations.size() == pow);
 
         remove_invalid_permutation(candidate_permutations);
@@ -709,7 +717,10 @@ std::vector< std::vector<int> > Schedule::get_isomorphism_vec() const
     return isomorphism_vec;
 }
 
-void Schedule::get_full_permutation(std::vector< std::vector<int> >& vec, bool use[], std::vector<int> tmp_vec, int depth) const
+// 获取所有结点[0,size)的全排列(所有置换)到vec二维数组
+void Schedule::get_full_permutation(std::vector< std::vector<int> >& vec,
+                                    bool use[], std::vector<int> tmp_vec,
+                                    int depth) const
 {
     if (depth == size)
     {
@@ -1455,21 +1466,22 @@ void Schedule::restricts_generate(const int* cur_adj_mat, std::vector< std::vect
     delete D;
 }
 
+// ?存在疑问
 int Schedule::get_vec_optimize_num(const std::vector<int> &vec) {
     bool is_valid = true;
     for(int i = 1; i < size; ++i) {
         bool have_edge = false;
         for(int j = 0; j < i; ++j)
-            if( adj_mat[INDEX(vec[i], vec[j], size)]) {
+            if(adj_mat[INDEX(vec[i], vec[j], size)]) {
                 have_edge = true;
                 break;
             }
-        if( have_edge == false) {
+        if(!have_edge) {
             is_valid = false;
             break;
         }
     }
-    if( !is_valid) return -1;
+    if(!is_valid) return -1;
 
     for(int k = 2; k <= size; ++k) {
         bool flag = true;
@@ -1478,7 +1490,7 @@ int Schedule::get_vec_optimize_num(const std::vector<int> &vec) {
                 flag = false;
                 break;
             }
-        if(flag == false) return k - 1;
+        if(!flag) return k - 1;
     }
     assert(0);
     return -1;
@@ -1712,17 +1724,24 @@ double Schedule::Naive_estimate_schedule_restrict(const std::vector<int> &order,
     return val;
 }
 
-void Schedule::remove_invalid_permutation(std::vector< std::vector<int> > &candidate_permutations) {
+// 移除无效的置换
+void Schedule::remove_invalid_permutation(
+        std::vector< std::vector<int> > &candidate_permutations
+        ) {
     for(unsigned int i = 0; i < candidate_permutations.size(); ) {
-        const auto& vec = candidate_permutations[i];
+        const auto& vec = candidate_permutations[i];    // 当前置换
         bool tag = true;
         for(int x = 1; x < size; ++x) {
             bool have_edge = false;
-            for(int y = 0; y < x; ++y)
-                if(adj_mat[INDEX(vec[x],vec[y],size)]) {
+            for(int y = 0; y < x; ++y) {
+                // 置换后结点间有边就保留
+                // 为什么判断条件不是:
+                // adj_mat[INDEX(vec[x], vec[y], size)]!=adj_mat[INDEX(x,y,size)]
+                if (adj_mat[INDEX(vec[x], vec[y], size)]) {
                     have_edge = true;
                     break;
                 }
+            }
             if(!have_edge) {
                 tag = false;
                 break;
