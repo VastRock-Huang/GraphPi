@@ -2,6 +2,7 @@
 #include <sys/time.h>
 #include <cstdlib>
 
+// 获取当前数据, 单位:s
 double get_wall_time() {
     struct timeval time;
     if(gettimeofday(&time,NULL)) {

@@ -39,6 +39,7 @@ bool Prefix::operator!=(const Prefix& pre) const
     return false;
 }
 
+// 判断Prefix::data与input_data数组是否相同
 bool Prefix::equal(int input_size, const int* input_data) const
 {
     if (size != input_size)

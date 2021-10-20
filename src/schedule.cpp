@@ -34,60 +34,66 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
     //the best order produced by performance_modeling(...) is saved in
     // best_order[]
     //Finally, we use best_order[] to relocate adj_mat
-    if( performance_modeling_type != 0) { 
+    if(performance_modeling_type != 0) {    // use performance_modeling
         unsigned int pow = 1;
         for (int i = 2; i <= size; ++i) pow *= i;
-        
+        // schedules的候选排列
         std::vector< std::vector<int> > candidate_permutations;
         candidate_permutations.clear();
         
         bool use[size];
         for (int i = 0; i < size; ++i) use[i] = false;
         std::vector<int> tmp_vec;
+        // 获取schedules的n!可能的全部排列
         get_full_permutation(candidate_permutations, use,
                              tmp_vec, 0);
         assert(candidate_permutations.size() == pow);
-
+        // 按Phase1规则移除无效排列
         remove_invalid_permutation(candidate_permutations);
-
+        // use GraphPi's modeling
         if(performance_modeling_type == 1) {
             //reduce candidates
+            // 该模式Pattern在Phase2中定义的k值,即所有排列中最大的k值
             int max_val = 0;
             for(const auto &vec : candidate_permutations) {
                 max_val = std::max(max_val, get_vec_optimize_num(vec));
             }
             std::vector< std::vector<int> > tmp;
             tmp.clear();
+            // 仅保留满足模式k值的排列
             for(const auto &vec : candidate_permutations) 
-                if( get_vec_optimize_num(vec) == max_val) {
+                if(get_vec_optimize_num(vec) == max_val) {
                     tmp.push_back(vec);
                 }
             candidate_permutations = tmp;
         }
 
+        // 最佳schedule
         int *best_order = new int[size];
         double min_val;
         bool have_best = false;
         
-
+        // 遍历每个候选schedule
         for(const auto &vec : candidate_permutations) {
-            int rank[size];
+            int rank[size];     // 记录排列的序号
             for(int i = 0; i < size; ++i) rank[vec[i]] = i;
-        
+
+            // Pattern新的邻接矩阵:按照当前排列的序号重新构造
             int* cur_adj_mat;
             cur_adj_mat = new int[size*size];
             for(int i = 0; i < size; ++i)
                 for(int j = 0; j < size; ++j)
                     cur_adj_mat[INDEX(rank[i], rank[j], size)] = adj_mat[INDEX(i, j, size)];
 
+            // 限制条件集合
             std::vector< std::vector< std::pair<int,int> > > restricts_vector;
-
             restricts_vector.clear();
 
+            // use GraphPi's restricts
             if(restricts_type == 1) {
                 restricts_generate(cur_adj_mat, restricts_vector);
             }
-            else {
+            else {  // not use restricts or use GraphZero's restricts
                 Schedule schedule(cur_adj_mat, size);
 
                 std::vector< std::pair<int,int> > pairs;
@@ -96,24 +102,27 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
                 restricts_vector.clear();
                 restricts_vector.push_back(pairs);
             }
-
+            // 若无限制条件
             if( restricts_vector.size() == 0) {
-                std::vector< std::pair<int,int> > Empty;
+                std::vector< std::pair<int,int> > Empty;    //空限制条件集合
                 Empty.clear();
 
+                // 性能开销参数,代表当前configuration的性能开销,越小越好
                 double val;
+                // use GraphPi's modeling
                 if(performance_modeling_type == 1) {
                     val = our_estimate_schedule_restrict(vec, Empty, v_cnt, e_cnt, tri_cnt);
                 }
                 else {
+                    // use GraphZero's modeling
                     if(performance_modeling_type == 2) {
                         val = GraphZero_estimate_schedule_restrict(vec, Empty, v_cnt, e_cnt);
                     }
-                    else {
+                    else {  // use naive modeling
                         val = Naive_estimate_schedule_restrict(vec, Empty, v_cnt, e_cnt);
                     }
                 }
-
+                // 记录当前空限制条件的schedule为最佳
                 if(have_best == false || val < min_val) {
                     have_best = true;
                     min_val = val;
@@ -122,7 +131,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
                 }
             }
 
-
+            // 遍历每组限制条件
             for(const auto& pairs : restricts_vector) {
                 double val;
                 if(performance_modeling_type == 1) {
@@ -147,6 +156,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
 
         }
 
+        // 根据最佳configuration的顺序重构模式图
         int rank[size];
         for(int i = 0; i < size; ++i) rank[best_order[i]] = i;
 
@@ -156,7 +166,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
                 adj_mat[INDEX(rank[i], rank[j], size)] = pattern_adj_mat[INDEX(i, j, size)]; 
         delete[] best_order;
     }
-    else {
+    else {  // not use performance modeling
         std::vector< int > I;
         I.clear();
         for(int i = 0; i < size; ++i) I.push_back(i);
@@ -164,12 +174,13 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
         std::vector< std::vector< std::pair<int,int> > > restricts_vector;
         restricts_vector.clear();
 
+        // use restricts
         if(restricts_type != 0) {
-
+            // use GraphPi's restricts
             if(restricts_type == 1) {
                 restricts_generate(adj_mat, restricts_vector);
             }
-            else {
+            else {  // use GraphZero's restricts
                 std::vector< std::pair<int,int> > pairs;
                 GraphZero_aggressive_optimize(pairs);
 
@@ -198,7 +209,8 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
 
     }
 
-    if( use_in_exclusion_optimize) {
+    // 是否使用容斥规则
+    if(use_in_exclusion_optimize) {
         std::vector<int> I;
         I.clear();
         for(int i = 0; i < size; ++i) I.push_back(i);
@@ -216,6 +228,9 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
             in_exclusion_optimize_num = 0;
     }
 
+    // 第i个循环涉及的候选结点至多为前i-1个结点的邻结点的交集,是结点是全连通图,
+    //第1个结点邻结点有(size-1)个,第2个结点的临界点(不包括1结点)有(size-2)个,...
+    //全部则为 size*(size-1)/2 个
     // The I-th loop consists of at most the intersection of i-1 VertexSet.
     // So the max number of prefix = 0 + 1 + ... + size-1 = size * (size-1) / 2
     int max_prefix_num = size * (size - 1) / 2;
@@ -236,6 +251,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
     total_prefix_num = 0;
     total_restrict_num = 0;
 
+    // Phase1规则检查
     // The I-th vertex must connect with at least one vertex from 0 to i-1.
     for (int i = 1; i < size; ++i)
     {
@@ -267,6 +283,10 @@ Schedule::Schedule(const int* _adj_mat, int _size)
 
     memcpy(adj_mat, _adj_mat, size * size * sizeof(int));
 
+    // QUE:为什么这么计算max_prefix_num,是么时候取到最大值
+    // 第i个循环涉及的候选结点至多为前i-1个结点的邻结点的交集,是结点是全连通图,
+    //第1个结点邻结点有(size-1)个,第2个结点的临界点(不包括1结点)有(size-2)个,...
+    //全部则为 size*(size-1)/2 个
     // The I-th loop consists of at most the intersection of i-1 VertexSet.
     // So the max number of prefix = 0 + 1 + ... + size-1 = size * (size-1) / 2
     int max_prefix_num = size * (size - 1) / 2;
@@ -288,6 +308,7 @@ Schedule::Schedule(const int* _adj_mat, int _size)
     total_restrict_num = 0;
     in_exclusion_optimize_num = 0;
 
+    // Phase1规则检查
     // The I-th vertex must connect with at least one vertex from 0 to i-1.
     for (int i = 1; i < size; ++i)
     {
@@ -323,6 +344,7 @@ Schedule::~Schedule()
     delete[] restrict_index;
 }
 
+// 获取模式的最大度数
 int Schedule::get_max_degree() const{
     int mx = 0;
     for(int i = 0; i < size; ++i) {
@@ -334,8 +356,10 @@ int Schedule::get_max_degree() const{
     return mx;
 }
 
-void Schedule::build_loop_invariant()
+// 构造前缀数组以及链式结构
+void Schedule:: build_loop_invariant()
 {
+    // 临时CSR数组:以当前遍历结点为起点,存边的终点
     int* tmp_data = new int[size];
     loop_set_prefix_id[0] = -1;
     for (int i = 1; i < size; ++i)
@@ -350,40 +374,51 @@ void Schedule::build_loop_invariant()
     delete[] tmp_data;
 }
 
+// 寻找当前数组data的前缀数组,返回前缀数组在prefix数组中的索引
 int Schedule::find_father_prefix(int data_size, const int* data)
 {
     if (data_size == 0)
         return -1;
-    int num = data[data_size - 1];
+    int num = data[data_size - 1];  // 前缀数组最后一个元素的值,表示一个结点的序号
     for (int prefix_id = last[num]; prefix_id != -1; prefix_id = next[prefix_id])
         if (prefix[prefix_id].equal(data_size, data))
             return prefix_id;
-    
+    // 没有在prefix数组中找到和当前数组data相同的数组,
+    //则递归的寻找当前数组data的父前缀的在prefix数组中的索引
     // not found, create new prefix and find its father prefix id recursively
     int father = find_father_prefix(data_size - 1, data);
+    // 记录当前前缀数组的父前缀索引
     father_prefix_id[total_prefix_num] = father;
+    // 更新前缀链表结构
     next[total_prefix_num] = last[num];
     last[num] = total_prefix_num;
+    // 拷贝前缀数组到prefix数组
     prefix[total_prefix_num].init(data_size, data);
     ++total_prefix_num;
     return total_prefix_num - 1;
 }
 
+// 设置(替换非添加)限制条件
 void Schedule::add_restrict(const std::vector< std::pair<int, int> >& restricts)
 {
     restrict_pair = restricts;
     for(unsigned int i = 0; i < restrict_pair.size(); ) {
         bool tag = true;
         for(unsigned int j = 0; j < restrict_pair.size(); ++j) {
-            if(i != j && restrict_pair[j].first == restrict_pair[i].first) 
-                for(unsigned int k = 0; k < restrict_pair.size(); ++k)
-                    if( i != k && j != k && restrict_pair[k].second == restrict_pair[i].second && restrict_pair[j].second == restrict_pair[k].first ) {
+            // 找到三个不同的限制条件满足:r_i=(a,b),r_j=(a,c),r_k=(c,b)
+            if(i != j && restrict_pair[j].first == restrict_pair[i].first) {
+                for (unsigned int k = 0; k < restrict_pair.size(); ++k) {
+                    if (i != k && j != k && restrict_pair[k].second == restrict_pair[i].second &&
+                        restrict_pair[j].second == restrict_pair[k].first) {
                         tag = false;
                         break;
                     }
+                }
+            }
             if(tag == false) break;
         }
         if(tag == false) {
+            // 移除其中一个限制条件
             restrict_pair.erase(restrict_pair.begin() + i);
         }
         else ++i;
@@ -395,16 +430,21 @@ void Schedule::add_restrict(const std::vector< std::pair<int, int> >& restricts)
     memset(restrict_last, -1, size * sizeof(int));
     memset(restrict_next, -1, max_prefix_num * sizeof(int));
     total_restrict_num = 0;
+    // 以链表的形式存储限制条件
     for (const auto& p : restrict_pair)
     {
         // p.first must be greater than p.second
+        // QUE:why p.first>p.second, should p.first<p.second?
+        // 记录限制条件的起始结点
         restrict_index[total_restrict_num] = p.first;
+        // 限制条件终止结点构造链表
         restrict_next[total_restrict_num] = restrict_last[p.second];
         restrict_last[p.second] = total_restrict_num;
         ++total_restrict_num;
     }
 }
 
+// 获取同构置换的数量
 int Schedule::get_multiplicity() const{
     std::vector< std::vector<int> > isomorphism_vec = get_isomorphism_vec();
     return isomorphism_vec.size();
@@ -501,21 +541,28 @@ void Schedule::aggressive_optimize(std::vector< std::pair<int, int> >& ordered_p
     assert(isomorphism_vec.size() == 1);
 }
 
+// 获取所有可以让同构消除的多组限制条件
 // Schedule::aggressive_optimize(...) can only get one valid restrictions
 // but in this function, we try our best to find more restrictions
 // WARNING: the restrictions in ordered_pairs_vector may NOT CORRECT
 void Schedule::aggressive_optimize_get_all_pairs(std::vector< std::vector< std::pair<int, int> > >& ordered_pairs_vector) 
 {
+    // 与模式同构的置换集
     std::vector< std::vector<int> > isomorphism_vec = get_isomorphism_vec();
 
+    // 模式同构对应的循环置换的乘积的集合
+    //permutation_groups[i]表示一个同构对应的循环置换乘积
+    //permutation_groups[i][x]为一个循环置换
     std::vector< std::vector< std::vector<int> > > permutation_groups;
     permutation_groups.clear();
+
+    // 对每个同构计算循环置换乘积
     for (const std::vector<int>& v : isomorphism_vec)
         permutation_groups.push_back(calc_permutation_group(v, size));
 
     ordered_pairs_vector.clear();
 
-    std::vector< std::pair<int,int> > ordered_pairs;
+    std::vector< std::pair<int,int> > ordered_pairs;    // 对换集合
     ordered_pairs.clear();
 
     // delete permutation group which contains 1 permutation with 2 elements and some permutation with 1 elements,
@@ -523,7 +570,8 @@ void Schedule::aggressive_optimize_get_all_pairs(std::vector< std::vector< std::
     for (unsigned int i = 0; i < permutation_groups.size(); )
     {
         int two_element_number = 0;
-        std::pair<int, int> found_pair;
+        std::pair<int, int> found_pair; //对换集合
+        // 在当前循环置换乘积中寻找2-cycle即对换
         for (const std::vector<int>& v : permutation_groups[i])
             if (v.size() == 2)
             {
@@ -533,35 +581,47 @@ void Schedule::aggressive_optimize_get_all_pairs(std::vector< std::vector< std::
             else if (v.size() != 1)
             {
                 two_element_number = -1;
-                break;
+                break;  // QUE:为什么遇到非1的循环置换直接退出当前同构置换的判断
             }
+        // 若对换只有一个
         if (two_element_number == 1)
         {
+            // 移除当前循环置换乘积和同构
             permutation_groups.erase(permutation_groups.begin() + i);
             isomorphism_vec.erase(isomorphism_vec.begin() + i);
+            // 添加到作为限制条件的对换集合中
             ordered_pairs.push_back(found_pair);
+            // 该大小关系通过calc_permutation_group()中计算算法可以保证
             assert(found_pair.first < found_pair.second);
         }
         else
             ++i;
     }
-
+    // 构造一个只有结点的模式,作为限制条件的DAG图
     Pattern base_dag(size);
+    // 将所有对换以边的形式添加到模式中
     for (const std::pair<int, int>& pair : ordered_pairs)
         base_dag.add_ordered_edge(pair.first, pair.second);
-
-    aggressive_optimize_dfs(base_dag, isomorphism_vec, permutation_groups, ordered_pairs, ordered_pairs_vector);
+    // 深度优先的找寻一组限制条件(对换集)
+    //结果记录在ordered_pairs_vector中,其中的每个元素是一组能将同构消除的限制条件
+    aggressive_optimize_dfs(base_dag, isomorphism_vec, permutation_groups,
+                            ordered_pairs, ordered_pairs_vector);
 
 }
 
-void Schedule::aggressive_optimize_dfs(Pattern base_dag, std::vector< std::vector<int> > isomorphism_vec, std::vector< std::vector< std::vector<int> > > permutation_groups, std::vector< std::pair<int,int> > ordered_pairs, std::vector< std::vector< std::pair<int,int> > >& ordered_pairs_vector) {
-
+// 根据ordered_pairs中对换构造DAG图消除同构,并递归至同构消除,得到的一组限制条件记录到ordered_pairs_vector中
+void Schedule::aggressive_optimize_dfs(Pattern base_dag, std::vector< std::vector<int> > isomorphism_vec,
+                                       std::vector< std::vector< std::vector<int> > > permutation_groups,
+                                       std::vector< std::pair<int,int> > ordered_pairs,
+                                       std::vector< std::vector< std::pair<int,int> > >& ordered_pairs_vector) {
     for (unsigned int i = 0; i < isomorphism_vec.size(); )
     {
         Pattern test_dag(base_dag);
-        const std::vector<int>& iso = isomorphism_vec[i];
+        const std::vector<int>& iso = isomorphism_vec[i];   // 同构置换
+        // 添加对换置换后的边
         for (const std::pair<int, int>& pair : ordered_pairs)
             test_dag.add_ordered_edge(iso[pair.first], iso[pair.second]);
+        // 若添加后成环则移除当前同构及其置换乘积
         if (test_dag.is_dag() == false) // is not dag means conflict
         {
             permutation_groups.erase(permutation_groups.begin() + i);
@@ -570,35 +630,47 @@ void Schedule::aggressive_optimize_dfs(Pattern base_dag, std::vector< std::vecto
         else
             ++i;
     }
-    
+    // 若只剩一个同构,则ordered_pairs里的对换正好可以消除其他同构,
+    //则直接添加到结果数组中
     if(isomorphism_vec.size() == 1) {
         ordered_pairs_vector.push_back(ordered_pairs);
         return;
     }
 
-
+    // 若剩余多个同构
     std::pair<int, int> found_pair;
+    // 遍历剩余的置换乘积
     for (unsigned int i = 0; i < permutation_groups.size(); )
     {
         int two_element_number = 0;
+        // 遍历每个循环置换
         for (const std::vector<int>& v : permutation_groups[i])
+        {
+            // 找2-cycle
             if (v.size() == 2)
             {
                 ++two_element_number;
                 found_pair = std::pair<int ,int>(v[0], v[1]);
+                // 记录先前的置换乘积,同构集,对换集和DAG图
                 std::vector< std::vector< std::vector<int> > > next_permutation_groups = permutation_groups;
                 std::vector< std::vector<int> > next_isomorphism_vec = isomorphism_vec;
                 std::vector< std::pair<int,int> > next_ordered_pairs = ordered_pairs;
                 Pattern next_base_dag = base_dag;
-                
+                // 移除当前置换乘积和同构
                 next_permutation_groups.erase(next_permutation_groups.begin() + i);
                 next_isomorphism_vec.erase(next_isomorphism_vec.begin() + i);
                 assert(found_pair.first < found_pair.second);
+                // 添加当前对换到对换集
                 next_ordered_pairs.push_back(found_pair);
+                // 添加边到DAG图
                 next_base_dag.add_ordered_edge(found_pair.first, found_pair.second);
-                
-                aggressive_optimize_dfs(next_base_dag, next_isomorphism_vec, next_permutation_groups, next_ordered_pairs, ordered_pairs_vector);
+                // 递归找寻做限制条件的对换
+                aggressive_optimize_dfs(next_base_dag, next_isomorphism_vec,
+                                        next_permutation_groups, next_ordered_pairs,
+                                        ordered_pairs_vector);
             }
+        }
+        // QUE:为什么若有多余一个对换则直接退出遍历置换乘积
         if( two_element_number >= 1) {
             break;
         }
@@ -685,6 +757,7 @@ void Schedule::GraphZero_get_automorphisms(std::vector< std::vector<int> > &Aut)
 
 }
 
+// 获取与模式同构的置换集
 std::vector< std::vector<int> > Schedule::get_isomorphism_vec() const
 {
     unsigned int pow = 1;
@@ -696,6 +769,7 @@ std::vector< std::vector<int> > Schedule::get_isomorphism_vec() const
     for (int i = 0; i < size; ++i)
         use[i] = false;
     std::vector<int> tmp_vec;
+    // 获取节点的全部排列
     get_full_permutation(vec, use, tmp_vec, 0);
     assert(vec.size() == pow);
     std::vector< std::vector<int> > isomorphism_vec;
@@ -703,21 +777,25 @@ std::vector< std::vector<int> > Schedule::get_isomorphism_vec() const
     for (const std::vector<int>& v : vec)
     {
         bool flag = true;
-        for (int i = 0; i < size; ++i)
-            for (int j = i + 1; j < size; ++j)
-                if (adj_mat[INDEX(i, j, size)] != 0)
+        for (int i = 0; i < size; ++i) {
+            for (int j = i + 1; j < size; ++j) {
+                // 要求结点间的连接性置换前后保持一致
+                if (adj_mat[INDEX(i, j, size)] != 0) {
                     if (adj_mat[INDEX(v[i], v[j], size)] == 0) // not isomorphism
                     {
                         flag = false;
                         break;
                     }
-        if (flag == true)
+                }
+            }
+        }
+        if (flag)
             isomorphism_vec.push_back(v);
     }
     return isomorphism_vec;
 }
 
-// 获取所有结点[0,size)的全排列(所有置换)到vec二维数组
+// 获取所有结点[0,size)的全排列到vec二维数组,用于做候选schedules
 void Schedule::get_full_permutation(std::vector< std::vector<int> >& vec,
                                     bool use[], std::vector<int> tmp_vec,
                                     int depth) const
@@ -738,8 +816,10 @@ void Schedule::get_full_permutation(std::vector< std::vector<int> >& vec,
         }
 }
 
+// 获取模式同构对应的循环置换的乘积
 std::vector< std::vector<int> > Schedule::calc_permutation_group(const std::vector<int> vec, int size)
 {
+    // vec是模式的同构
     bool use[size];
     for (int i = 0; i < size; ++i)
         use[i] = false;
@@ -1122,7 +1202,9 @@ void Schedule::new_performance_modeling(int* best_order, std::vector< std::vecto
     delete[] pp_size;
 }
 
+// 容斥定理优化初始化函数
 void Schedule::init_in_exclusion_optimize() {
+    // 当前排列的Phase2中定义的k值,要求排列最后k个结点不直连
     int optimize_num = in_exclusion_optimize_num;
     
     assert( in_exclusion_optimize_num > 1);
@@ -1130,12 +1212,14 @@ void Schedule::init_in_exclusion_optimize() {
     int* id;
     id = new int[ optimize_num ];
 
+    // in_exclusion_val[2*n-1]和in_exclusion_val[2*n-2]分别表示
+    //在n个结点所构成的所有图的可能中总边数为奇数和偶数的连通图的数目
     int* in_exclusion_val;
     in_exclusion_val = new int[ optimize_num * 2];
 
     for(int n = 1; n <= optimize_num; ++n) {
         DisjointSetUnion dsu(n);
-        int m = n * (n - 1) / 2;
+        int m = n * (n - 1) / 2;    // 完全图的边数
 
         in_exclusion_val[ 2 * n - 2 ] = 0;
         in_exclusion_val[ 2 * n - 1 ] = 0;
@@ -1145,21 +1229,28 @@ void Schedule::init_in_exclusion_optimize() {
             continue;
         }
 
-        std::pair<int,int> edge[m];
+        std::pair<int,int> edge[m];     // 存所有的无向边
         int e_cnt = 0;
         for(int i = 0; i < n; ++i)
             for(int j = 0; j < i; ++j)
                 edge[e_cnt++] = std::make_pair(i,j);
 
+        // 一共m条边,每个边用1位表示是否存在
+        // s则表示n个结点的一种图的情况, 此处遍历n个结点存在的2^m种情况
         for(int s = 0; s < (1<<m); ++s) {
             dsu.init();
-            int bit_cnt = 0;
-            for(int i = 0; i < m; ++i) 
-                if( s & (1<<i)) {
+            int bit_cnt = 0;    // 记录该种图的情况下边的数目
+            // 遍历所有无向边
+            for(int i = 0; i < m; ++i) {
+                // 判断某条边是否存在
+                if (s & (1 << i)) {
                     ++bit_cnt;
-                    dsu.merge(edge[i].first, edge[i].second);
+                    dsu.merge(edge[i].first, edge[i].second);   // 连接结点
                 }
+            }
+            // 若最后图是连通的,即只有1个连通分量
             if( dsu.get_set_size() == 1) {
+                // 按奇偶性区分
                 if( bit_cnt & 1) ++in_exclusion_val[2 * n -1];
                 else ++in_exclusion_val[ 2 * n - 2];
             }
@@ -1175,7 +1266,10 @@ void Schedule::init_in_exclusion_optimize() {
     delete[] in_exclusion_val;
 }
 
+
 void Schedule::get_in_exclusion_optimize_group(int depth, int* id, int id_cnt, int* in_exclusion_val) {
+    // id为大小为in_exclusion_optimize_num(k)的数组
+    //id[i]=0~i, i from 0 to id_cnt-1, id_cnt from 0 to in_exclusion_optimize_num
     if( depth == in_exclusion_optimize_num) {
         int* size = new int[id_cnt];
         for(int i = 0; i < id_cnt; ++i)
@@ -1441,19 +1535,27 @@ void Schedule::restrict_selection(int v_cnt, unsigned int e_cnt, long long tri_c
     assert(have_best);
 }
 
+// 生成限制条件并进行验证
 void Schedule::restricts_generate(const int* cur_adj_mat, std::vector< std::vector< std::pair<int,int> > > &restricts) {
     Schedule schedule(cur_adj_mat, get_size());
+    // restricts中为多组限制条件
     schedule.aggressive_optimize_get_all_pairs(restricts);
     int size = schedule.get_size();
     Graph* complete;
     DataLoader* D = new DataLoader();
+    // 构造一个结点数为size+1的完全图
+    // QUE:此处图结点数为什么是size+1,按照论文应该是size?
     assert(D->load_complete(complete, size + 1));
+    // ans=ans_without/automorphisms_count, ans_without即不使用限制条件进行的完全图模式匹配
     long long ans = complete->pattern_matching( schedule, 1) / schedule.get_multiplicity();
     int thread_num = 1;
     for(int i = 0; i < restricts.size(); ) {
         Schedule cur_schedule(schedule.get_adj_mat_ptr(), schedule.get_size());
+        // 设置限制条件
         cur_schedule.add_restrict(restricts[i]);
+        // ans_with即待限定条件后的完全图模式匹配
         long long cur_ans = complete->pattern_matching( cur_schedule, thread_num);
+        // 不相等则不为正确的限制条件则移除
         if( cur_ans != ans) {
             restricts.erase(restricts.begin() + i);
         }
@@ -1466,9 +1568,10 @@ void Schedule::restricts_generate(const int* cur_adj_mat, std::vector< std::vect
     delete D;
 }
 
-// ?存在疑问
+// 获取当前排列的Phase2中定义的k值,要求排列最后k个结点不直连
 int Schedule::get_vec_optimize_num(const std::vector<int> &vec) {
     bool is_valid = true;
+    // 判断当前候选排列是否已经移除了不满足Phase1规则的排列
     for(int i = 1; i < size; ++i) {
         bool have_edge = false;
         for(int j = 0; j < i; ++j)
@@ -1482,10 +1585,11 @@ int Schedule::get_vec_optimize_num(const std::vector<int> &vec) {
         }
     }
     if(!is_valid) return -1;
-
+    // 根据Phase2,要求最后k个结点任意两个不直连
     for(int k = 2; k <= size; ++k) {
         bool flag = true;
         for(int i = size - k + 1; i < size; ++i)
+            // 置换后结点间有边退出
             if(adj_mat[INDEX(vec[size - k], vec[i], size)]) {
                 flag = false;
                 break;
@@ -1496,19 +1600,27 @@ int Schedule::get_vec_optimize_num(const std::vector<int> &vec) {
     return -1;
 }
 
-double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, const std::vector< std::pair<int,int> > &pairs, int v_cnt, unsigned int e_cnt, long long tri_cnt) {
+double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, const std::vector< std::pair<int,int> > &pairs,
+                                                int v_cnt, unsigned int e_cnt, long long tri_cnt) {
+    // order为一种schedule
+
     int max_degree = get_max_degree();
 
     double p_size[max_degree];
     double pp_size[max_degree];
 
+    // 在加载图数据时边数e_cnt进行了乘2
+    // 论文中的p_1=2*|E_G|/|V_G|^2
     double p0 = e_cnt * 1.0 / v_cnt / v_cnt;
+    // 论文中的p_2=tri_cnt*|V_G|/(2*|E_G|)^2
     double p1 = tri_cnt * 1.0 * v_cnt / e_cnt / e_cnt; 
-    
+
+    // p_size[i]=p_size[i-1]*p0=v_cnt*(p0^i)
     p_size[0] = v_cnt;
     for(int i = 1;i < max_degree; ++i) {
         p_size[i] = p_size[i-1] * p0;
     }
+    //pp_size[i]=pp_size[i-1]*p1=p1^i
     pp_size[0] = 1;
     for(int i = 1; i < max_degree; ++i) {
         pp_size[i] = pp_size[i-1] * p1;
@@ -1516,8 +1628,8 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
 
     int rank[size];
     for(int i = 0; i < size; ++i) rank[order[i]] = i;
-    
-    int* cur_adj_mat;
+
+    int* cur_adj_mat;   // 根据schedule顺序转换后的模式图
     cur_adj_mat = new int[size*size];
     for(int i = 0; i < size; ++i)
         for(int j = 0; j < size; ++j)
@@ -1538,22 +1650,28 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
                 sum[i] += 1;
             }
             else break;
-    } while( std::next_permutation(tmp, tmp + size));
-    
+    } while( std::next_permutation(tmp, tmp + size));   // 遍历所有排列
+    // next_permutation()用于获取下一个更大的排列
+
+    // total=1*2*3*...size=(size)!
     double total = 1;
     for(int i = 2; i <= size; ++i) total *= i;
     for(int i = 0; i < restricts_size; ++i)
         sum[i] = sum[i] /total;
+    // sum[i]=sum[i]/sum[i-1],sum[0]=sum[0]/(size)!
     for(int i = restricts_size - 1; i > 0; --i)
         sum[i] /= sum[i - 1];
 
     std::vector<int> invariant_size[size];
     for(int i = 0; i < size; ++i) invariant_size[i].clear();
-    
+
+    // 性能开销参数,代表当前configuration的性能开销,越小越好
     double val = 1;
+    // 嵌套计算cost_i
+    //此处i:n-1->0,论文中为1->n (n==size即结点数)
     for(int i = size - 1; i >= 0; --i) {
-        int cnt_forward = 0;
-        int cnt_backward = 0;
+        int cnt_forward = 0;    // 该结点与比自己序号小的结点的边数
+        int cnt_backward = 0;   // 该结点与比自己序号大的阶段的边数
         for(int j = 0; j < i; ++j)
             if(cur_adj_mat[INDEX(j, i, size)])
                 ++cnt_forward;
@@ -1724,7 +1842,7 @@ double Schedule::Naive_estimate_schedule_restrict(const std::vector<int> &order,
     return val;
 }
 
-// 移除无效的置换
+// 按照Phase1规则移除无效排列
 void Schedule::remove_invalid_permutation(
         std::vector< std::vector<int> > &candidate_permutations
         ) {
@@ -1735,8 +1853,7 @@ void Schedule::remove_invalid_permutation(
             bool have_edge = false;
             for(int y = 0; y < x; ++y) {
                 // 置换后结点间有边就保留
-                // 为什么判断条件不是:
-                // adj_mat[INDEX(vec[x], vec[y], size)]!=adj_mat[INDEX(x,y,size)]
+                // Phase1:要求搜索的结点必须与至少一个先前已搜索的结点直连
                 if (adj_mat[INDEX(vec[x], vec[y], size)]) {
                     have_edge = true;
                     break;
@@ -1751,6 +1868,7 @@ void Schedule::remove_invalid_permutation(
             ++i;
         }
         else {
+            // 若置换后的该结点与前面的都不直连则移除
             candidate_permutations.erase(candidate_permutations.begin() + i);
         }
     }
@@ -1762,6 +1880,7 @@ int Schedule::get_in_exclusion_optimize_num_when_not_optimize() {
     return get_vec_optimize_num(I);
 }
 
+// QUE
 void Schedule::set_in_exclusion_optimize_redundancy() {
     int tmp = get_in_exclusion_optimize_num();
     if(tmp <= 1) {

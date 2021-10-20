@@ -19,6 +19,7 @@ bool DataLoader::load_data(Graph* &g, DataType type, const char* path, int orien
     return false;
 }
 
+// 通用加载图数据函数
 bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, int oriented_type) {
     // 读取数据集到标准输入
     if (freopen(path, "r", stdin) == NULL)
@@ -65,7 +66,7 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     // 记录结点的度
     int* degree = new int[g->v_cnt];
     memset(degree, 0, g->v_cnt * sizeof(int));
-    g->e_cnt *= 2;  // 可能是无向图边*2
+    g->e_cnt *= 2;  // QUE:可能是无向图边*2 CSR数组大小
     std::pair<int,int> *e = new std::pair<int,int>[g->e_cnt];
     id.clear();
     int x,y;
@@ -156,10 +157,10 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     }
     g->edge = new int[g->e_cnt];
     g->vertex = new unsigned int[g->v_cnt + 1];
+    // CSR 存图法
     bool* have_edge = new bool[g->v_cnt];   // 记录结点是否右边
     int lst_v = -1;
     for(int i = 0; i < g->v_cnt; ++i) have_edge[i] = false;
-    // CSR 存图法
     for(unsigned int i = 0; i < g->e_cnt; ++i) {
         if(e[i].first != lst_v) {
             have_edge[e[i].first] = true;
@@ -209,6 +210,7 @@ bool DataLoader::twitter_load_data(Graph *&g, DataType type, const char* path, i
     return true;
 }
 
+// 构造一个结点数为clique_size的完全图到g中
 bool DataLoader::load_complete(Graph* &g, int clique_size) {
     g = new Graph();
 
@@ -260,6 +262,7 @@ bool DataLoader::load_complete(Graph* &g, int clique_size) {
     g->e_cnt = unique(e,e+tmp_e) - e;
     g->edge = new int[g->e_cnt];
     g->vertex = new unsigned int[g->v_cnt + 1];
+    // CSR存图
     bool* have_edge = new bool[g->v_cnt];
     int lst_v = -1;
     for(int i = 0; i < g->v_cnt; ++i) have_edge[i] = false;

@@ -1,4 +1,5 @@
 #include "../include/disjoint_set_union.h"
+// 类并查集算法, 用于划分图的连通分量
 
 DisjointSetUnion::DisjointSetUnion(int n) {
     size = n;

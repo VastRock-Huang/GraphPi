@@ -138,6 +138,7 @@ void Graph::tc_mt(long long *global_ans) {
     }
 }
 
+// 获取v结点的边在edge数组中的范围,范围为[l,r-1]
 void Graph::get_edge_index(int v, unsigned int& l, unsigned int& r) const
 {
     l = vertex[v];
@@ -199,6 +200,9 @@ void Graph::pattern_matching_func(const Schedule& schedule, VertexSet* vertex_se
 long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bool clique)
 {
     long long global_ans = 0;
+// omp parallel: OpenMP定义并行区域
+// num_threads(): 设置线程数
+// reduction(+: <var>): 表示该变量var最后多个线程求和(+)
 #pragma omp parallel num_threads(thread_count) reduction(+: global_ans)
     {
         double start_time = get_wall_time();
@@ -209,22 +213,30 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
         subtraction_set.init();
         long long local_ans = 0;
         // TODO : try different chunksize
+// omp for: 分配循环到多线程
+// schedule(dynamic): 动态分配到多线程
+// nowait: 取消for循环后的隐含屏障
 #pragma omp for schedule(dynamic) nowait
+        // 遍历每个结点
         for (int vertex = 0; vertex < v_cnt; ++vertex)
         {
-            unsigned int l, r;
+            unsigned int l, r;  // 结点vertex在edge数组中的范围[l,r-1]
             get_edge_index(vertex, l, r);
+            // 遍历以0结点结尾的前缀prefix
             for (int prefix_id = schedule.get_last(0); prefix_id != -1; prefix_id = schedule.get_next(prefix_id))
             {
-                vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l], (int)r - l, prefix_id);
+                vertex_set[prefix_id].build_vertex_set(schedule, vertex_set,
+                                                       &edge[l], (int)r - l, prefix_id);
             }
             //subtraction_set.insert_ans_sort(vertex);
             subtraction_set.push_back(vertex);
             //if (schedule.get_total_restrict_num() > 0 && clique == false)
+            pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set, tmp_set, local_ans, 1);
+            /*
             if(true)
                 pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set, tmp_set, local_ans, 1);
             else
-                pattern_matching_func(schedule, vertex_set, subtraction_set, local_ans, 1, clique);
+                pattern_matching_func(schedule, vertex_set, subtraction_set, local_ans, 1, clique); */
             subtraction_set.pop_back();
             /*
             if( (vertex & (-vertex)) == (1<<15) ) {

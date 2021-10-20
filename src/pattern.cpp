@@ -215,20 +215,24 @@ void Pattern::print() const
     printf("\n");
 }
 
+// 拓扑排序判断是否是有向无环图
 bool Pattern::is_dag() const
 {
     int degree[size];
     memset(degree, 0, size * sizeof(int));
+    // 遍历图记录结点入度
     for (int i = 0; i < size; ++i)
         for (int j = 0; j < size; ++j)
             if (adj_mat[INDEX(i, j, size)] > 0)
                 ++degree[j];
-    int que[size];
+    int que[size];  // 数组队列
     int head = 0;
     int tail = -1;
+    // 遍历找到入度为0的结点
     for (int i = 0; i < size; ++i)
         if (degree[i] == 0)
             que[++tail] = i;
+    // 拓扑排序
     while (head <= tail)
     {
         int x = que[head++];
@@ -240,6 +244,7 @@ bool Pattern::is_dag() const
                     que[++tail] = j;
             }
     }
+    // 若无循环
     if (tail == size - 1)
         return true;
     else

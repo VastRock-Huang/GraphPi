@@ -11,7 +11,9 @@ public:
     long long tri_cnt; // number of triangle
     double max_running_time = 60 * 60 * 24; // second
 
+    // 只记录边的终结点, edges[i]表示第i条边的终结点是edges[i]
     int *edge; // edges
+    // 记录结点起始边索引,下标为边的起点. 结点i的边在edge数组的范围为[vertex[i],vertex[i-1]-1]
     unsigned int *vertex; // v_i's neighbor is in edge[ vertex[i], vertex[i+1]-1]
     
     Graph() {

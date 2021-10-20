@@ -44,5 +44,6 @@ private:
     bool general_load_data(Graph* &g, DataType type, const char* path, int oriented_type = 0);
     bool twitter_load_data(Graph* &g, DataType type, const char* path, int oriented_type = 0);
 
+    // 用于结点压缩的map
     std::map<int,int> id;
 };

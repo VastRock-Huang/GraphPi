@@ -7,9 +7,10 @@ VertexSet::VertexSet()
 :data(nullptr), size(0), allocate(false)
 {}
 
+// 初始化分配data动态数组
 void VertexSet::init()
 {
-    if (allocate == true && data != nullptr)
+    if (allocate && data != nullptr)
         size = 0; // do not reallocate
     else
     {
@@ -32,15 +33,17 @@ void VertexSet::init(int input_size)
     }
 }
 
+// 将内部数组及大小浅拷贝为输入的参数
 void VertexSet::init(int input_size, int* input_data)
 {
-    if (allocate == true && data != nullptr)
+    if (allocate && data != nullptr)
         delete[] data;
     size = input_size;
     data = input_data;
     allocate = false;
 }
 
+// 深拷贝输入数组到内部数组
 void VertexSet::copy(int input_size, const int* input_data)
 {
     size = input_size;
@@ -53,8 +56,12 @@ VertexSet::~VertexSet()
         delete[] data;
 }
 
+// 求两结点交集,结果存到内部数组
 void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int min_vertex, bool clique)
 {
+    //set0和set1中的结点应该是升序排列的
+
+    // 若两结点集VertexSet相同则拷贝结点集到内部数组
     if (&set0 == &set1)
     {
         copy(set0.get_size(), set0.get_data_ptr());
@@ -72,28 +79,22 @@ void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int m
     //     ..., if (++j == size1) break;
     //     ......
     // Maybe we can also use binary search if one set is very small and another is large.
-    if (clique == true)
+    if (clique)
         if (set0.get_data(0) >= min_vertex || set1.get_data(0) >= min_vertex)
             return;
     int data0 = set0.get_data(0);
     int data1 = set1.get_data(0);
-    if (clique)
+    if (clique) {   // 对于完全子图结点序号大于min_vertex就退出
         // TODO : Try more kinds of calculation.
         // For example, we can use binary search find the last element which is smaller than min_vertex, and set its index as loop_size.
-        while (i < size0 && j < size1)
-        {
-            if (data0 < data1)
-            {
+        while (i < size0 && j < size1) {
+            if (data0 < data1) {
                 if ((data0 = set0.get_data(++i)) >= min_vertex)
                     break;
-            }
-            else if (data0 > data1)
-            {
+            } else if (data0 > data1) {
                 if ((data1 = set1.get_data(++j)) >= min_vertex)
                     break;
-            }
-            else
-            {
+            } else {
                 push_back(data0);
                 if ((data0 = set0.get_data(++i)) >= min_vertex)
                     break;
@@ -101,22 +102,23 @@ void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int m
                     break;
             }
         }
-    else
-        while (i < size0 && j < size1)
-        {
+    }
+    else {  // 非完全子图 clique==false
+        // 将set0和set1中所有相同的结点存入VertexSet内部数组
+        while (i < size0 && j < size1) {
             data0 = set0.get_data(i);
             data1 = set1.get_data(j);
             if (data0 < data1)
                 ++i;
             else if (data0 > data1)
                 ++j;
-            else
-            {
+            else {
                 push_back(data0);
                 ++i;
                 ++j;
             }
         }
+    }
 }
 
 void VertexSet::intersection_with(const VertexSet& set1) {
@@ -155,16 +157,25 @@ void VertexSet::intersection_with(const VertexSet& set1) {
     }
 }
 
-void VertexSet::build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data, int input_size, int prefix_id, int min_vertex, bool clique)
+// 求给定prefix_id对应的前缀结点vertex[father_id]与某个结点的领域(input_data)的交集
+void VertexSet::build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
+                                 int input_size, int prefix_id, int min_vertex, bool clique)
 {
+    // input_data: &edge[l],是某个结点在edge数组中的起点. 整个数组表示该结点的所有边的终结点数组
+    // input_size: input_data数组的大小,也是该结点的边数
+    // min_vertex = -1
+    // clique = false
+
+    // 父前缀索引
     int father_id = schedule.get_father_prefix_id(prefix_id);
-    if (father_id == -1)
+    if (father_id == -1) {  // 若无父前缀,则初始化为该结点的边数组
         init(input_size, input_data);
-    else
-    {
+    }
+    else  {
         init();
         VertexSet tmp_vset;
         tmp_vset.init(input_size, input_data);
+        // 求vertex[father_id]和tmp_vset的结点交集
         intersection(vertex_set[father_id], tmp_vset, min_vertex, clique);
     }
 }

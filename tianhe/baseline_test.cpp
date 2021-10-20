@@ -10,12 +10,14 @@
 #include <string>
 #include <algorithm>
 
-void test_pattern(Graph* g, const Pattern &pattern, int performance_modeling_type, int restricts_type, bool use_in_exclusion_optimize = false) {
+void test_pattern(Graph* g, const Pattern &pattern, int performance_modeling_type,
+                  int restricts_type, bool use_in_exclusion_optimize = false) {
     int thread_num = 24;
     double t1,t2;
     
     bool is_pattern_valid;
-    Schedule schedule(pattern, is_pattern_valid, performance_modeling_type, restricts_type, use_in_exclusion_optimize, g->v_cnt, g->e_cnt, g->tri_cnt);
+    Schedule schedule(pattern, is_pattern_valid, performance_modeling_type,
+                      restricts_type, use_in_exclusion_optimize, g->v_cnt, g->e_cnt, g->tri_cnt);
     assert(is_pattern_valid);
 
     t1 = get_wall_time();
@@ -69,7 +71,7 @@ int main(int argc,char *argv[]) {
     printf("Load data success!\n");
     fflush(stdout);
 
-    Pattern p(size, adj_mat);   // 模式
+    Pattern p(size, adj_mat);   // 模式图
     test_pattern(g, p, test_type, test_type, test_type);
     
     delete g;
