@@ -79,9 +79,10 @@ void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int m
     //     ..., if (++j == size1) break;
     //     ......
     // Maybe we can also use binary search if one set is very small and another is large.
-    if (clique)
+    if (clique) {
         if (set0.get_data(0) >= min_vertex || set1.get_data(0) >= min_vertex)
             return;
+    }
     int data0 = set0.get_data(0);
     int data1 = set1.get_data(0);
     if (clique) {   // 对于完全子图结点序号大于min_vertex就退出
@@ -121,6 +122,7 @@ void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int m
     }
 }
 
+// 求当前结点集和set1结点集的交集
 void VertexSet::intersection_with(const VertexSet& set1) {
     if (this == &set1)
         return;
@@ -137,9 +139,9 @@ void VertexSet::intersection_with(const VertexSet& set1) {
     //     ..., if (++j == size1) break;
     //     ......
     // Maybe we can also use binary search if one set is very small and another is large.
-    int data0 = set0.get_data(0);
-    int data1 = set1.get_data(0);
-    size = 0;
+    int data0;
+    int data1;
+    size = 0;   // 将当前集合清空
     while (i < size0 && j < size1)
     {
         data0 = set0.get_data(i);
@@ -157,7 +159,7 @@ void VertexSet::intersection_with(const VertexSet& set1) {
     }
 }
 
-// 求给定prefix_id对应的前缀结点vertex[father_id]与某个结点的领域(input_data)的交集
+// 求给定prefix_id对应的父前缀的结点集vertex_set[father_id]与某个结点的领域(input_data)的交集
 void VertexSet::build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
                                  int input_size, int prefix_id, int min_vertex, bool clique)
 {
@@ -196,6 +198,7 @@ void VertexSet::insert_ans_sort(int val)
     ++size;
 }
 
+// 判断val是否在该结点集中
 bool VertexSet::has_data(int val)
 {
     for (int i = 0; i < size; ++i)
@@ -204,6 +207,7 @@ bool VertexSet::has_data(int val)
     return false;
 }
 
+// set0的前size_after_restrict个结点与set1结点集作差,返回作差后集合的大小
 int VertexSet::unorderd_subtraction_size(const VertexSet& set0, const VertexSet& set1, int size_after_restrict)
 {
     int size0 = set0.get_size();

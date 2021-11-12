@@ -8,7 +8,9 @@
 
 // 加载图数据
 bool DataLoader::load_data(Graph* &g, DataType type, const char* path, int oriented_type) {
-    if(type == Patents || type == Orkut || type == complete8 || type == LiveJournal || type == MiCo || type == CiteSeer || type == Wiki_Vote) {
+    if(type == Patents || type == Orkut || type == complete8
+    || type == LiveJournal || type == MiCo || type == CiteSeer
+    || type == Wiki_Vote || type == Test) {
         return general_load_data(g, type, path, oriented_type);
     }
 
@@ -56,6 +58,10 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
             g->tri_cnt = Orkut_tri_cnt;
             break;
         }
+        case DataType::Test: {
+            g->tri_cnt = Test_tri_cnt;
+            break;
+        }
         default : {
             g->tri_cnt = -1;
             break;
@@ -66,7 +72,7 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     // 记录结点的度
     int* degree = new int[g->v_cnt];
     memset(degree, 0, g->v_cnt * sizeof(int));
-    g->e_cnt *= 2;  // QUE:可能是无向图边*2 CSR数组大小
+    g->e_cnt *= 2;  // QUE:边数*2的原因 ANS:CSR存图法存的相当于有向边,1条无向边会存两次,边数*2用于表示CSR数组的大小
     std::pair<int,int> *e = new std::pair<int,int>[g->e_cnt];
     id.clear();
     int x,y;
@@ -123,7 +129,7 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     // 对结点度数组从小到大排序
     std::sort(degree, degree + g->v_cnt);
 
-    // 交集最大度数
+    // 两个结点邻域交集的大小,是度数第二大的结点的度数
     // The max size of intersections is the second largest degree.
     //TODO VertexSet::max_intersection_size has different value with
     // different dataset, but we use a static variable now.

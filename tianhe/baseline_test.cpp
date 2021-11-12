@@ -23,12 +23,12 @@ void test_pattern(Graph* g, const Pattern &pattern, int performance_modeling_typ
     t1 = get_wall_time();
     long long ans = g->pattern_matching(schedule, thread_num);
     t2 = get_wall_time();
-
+    printf("---------------------\noutput:\n");
     printf("ans %lld\n", ans);
     printf("time %.6lf\n", t2 - t1);
     schedule.print_schedule();
     const auto& pairs = schedule.restrict_pair;
-    printf("%d ",pairs.size());
+    printf("restricts: size=%llu ",pairs.size());
     for(auto& p : pairs)
         printf("(%d,%d)",p.first,p.second);
     puts("");
@@ -73,6 +73,6 @@ int main(int argc,char *argv[]) {
 
     Pattern p(size, adj_mat);   // 模式图
     test_pattern(g, p, test_type, test_type, test_type);
-    
+
     delete g;
 }

@@ -26,6 +26,7 @@ public:
     inline void pop_back() { --size;}
     inline int get_last() const { return data[size - 1];}
     bool has_data(int val);
+    // 两个结点邻域交集的大小,是度数第二大的结点的度数
     static int max_intersection_size;
     void build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
                           int input_size, int prefix_id, int min_vertex = -1, bool clique = false);

@@ -28,6 +28,7 @@ public:
     inline int get_total_prefix_num() const { return total_prefix_num;}
     // 获取第prefix_id个前缀的父前缀在prefix数组中的索引
     inline int get_father_prefix_id(int prefix_id) const { return father_prefix_id[prefix_id];}
+    // 获取结点loop的前缀索引
     inline int get_loop_set_prefix_id(int loop) const { return loop_set_prefix_id[loop];}
     // 获取模式的结点数
     inline int get_size() const { return size;}
@@ -35,13 +36,17 @@ public:
     inline int get_last(int i) const { return last[i];}
     // 返回和索引为i的前缀结尾结点相同的下个前缀索引
     inline int get_next(int i) const { return next[i];}
+    // 返回当前排列的Phase2中定义的k值,要求排列最后k个结点不直连
     inline int get_in_exclusion_optimize_num() const { return in_exclusion_optimize_num;}
     inline void set_in_exclusion_optimize_num(int num) { in_exclusion_optimize_num = num; }
     int get_in_exclusion_optimize_num_when_not_optimize();
     void add_restrict(const std::vector< std::pair<int, int> >& restricts);
+    // 获取限制条件数量
     inline int get_total_restrict_num() const { return total_restrict_num;}
+    // 获取以结点v为终点的限制条件的链表头
     inline int get_restrict_last(int i) const { return restrict_last[i];}
     inline int get_restrict_next(int i) const { return restrict_next[i];}
+    // 返回索引为i的限制条件的起始结点
     inline int get_restrict_index(int i) const { return restrict_index[i];}
     inline long long get_in_exclusion_optimize_redundancy() const { return in_exclusion_optimize_redundancy; }
     int get_max_degree() const;
@@ -61,7 +66,7 @@ public:
         
 
     void print_schedule() const;
-
+    // 容斥定理分组,每个二维数组是一种情况,将k个结点分成几组
     std::vector< std::vector< std::vector<int> > >in_exclusion_optimize_group;
     std::vector< int > in_exclusion_optimize_val;
     // 限制条件数组,每个限制条件是起始结点和终结点的结点对
@@ -75,7 +80,7 @@ private:
     int* last;
     // 辅助last数组,last[p]表示和索引为p的前缀数组prefix[p]结尾结点相同的下一个前缀索引
     int* next;
-    // 对应在prefix数组的索引
+    // 结点的前缀对应在prefix数组的索引,loop_set_prefix_id[v]表示结点v的前缀为prefix[loop_set_prefix_id[v]]
     int* loop_set_prefix_id;
     // 存储所有结点的前缀数组,prefix[p]表示一种前缀数组
     Prefix* prefix;
@@ -93,7 +98,7 @@ private:
     int total_restrict_num;
     // 当前排列的Phase2中定义的k值,要求排列最后k个结点不直连
     int in_exclusion_optimize_num;
-
+    // 使用容斥定理未考虑后k个阶段的限制条件而引入的冗余倍数
     long long in_exclusion_optimize_redundancy;
 
     void build_loop_invariant();

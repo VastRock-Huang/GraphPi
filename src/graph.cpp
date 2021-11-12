@@ -211,24 +211,43 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
         VertexSet subtraction_set;
         VertexSet tmp_set;
         subtraction_set.init();
+        // 本线程满足匹配的数量
         long long local_ans = 0;
         // TODO : try different chunksize
 // omp for: 分配循环到多线程
 // schedule(dynamic): 动态分配到多线程
 // nowait: 取消for循环后的隐含屏障
 #pragma omp for schedule(dynamic) nowait
-        // 遍历每个结点
+        // 遍历输入数据图的每个结点
         for (int vertex = 0; vertex < v_cnt; ++vertex)
         {
             unsigned int l, r;  // 结点vertex在edge数组中的范围[l,r-1]
             get_edge_index(vertex, l, r);
-            // 遍历以0结点结尾的前缀prefix
+            // 遍历以模式图中0结点结尾的前缀prefix
+            // 经过该循环后,所有以0结点为结尾的前缀的结点集都被设置为了当前在数据图在匹配的结点vertex的邻域
+            //理论上以0结点为结尾的前缀只有一个,但该前缀对应的结点不止一个,但至少1结点满足
             for (int prefix_id = schedule.get_last(0); prefix_id != -1; prefix_id = schedule.get_next(prefix_id))
             {
+                // 求以0结点结尾前缀的父前缀的结点集vertex_set[father_id]与结点vertex的邻域(input_data)的交集
+                // 理论上讲结点0是第一个结点,以0为结尾的前缀应该没有父结点,
+                //因此vertex_set[prefix_id]=input_data
+
                 vertex_set[prefix_id].build_vertex_set(schedule, vertex_set,
-                                                       &edge[l], (int)r - l, prefix_id);
+                                                       &edge[l], (int)r - l,prefix_id);
+                /*
+                if(vertex_set[prefix_id].get_size()==r-l){
+                    for (int j = 0; j < vertex_set[prefix_id].get_size(); ++j) {
+                        if(vertex_set[prefix_id].get_data(j)!=edge[l+j]){
+                            printf("false\n");
+                            break;
+                        }
+                    }
+                }else{
+                    printf("false\n");
+                }*/
             }
             //subtraction_set.insert_ans_sort(vertex);
+            // 存入当前数据图结点
             subtraction_set.push_back(vertex);
             //if (schedule.get_total_restrict_num() > 0 && clique == false)
             pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set, tmp_set, local_ans, 1);
@@ -248,21 +267,44 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
                 }
             }*/
         }
+/*
+        for(int i=0; i<schedule.get_total_prefix_num(); ++i) {
+            printf("vertex_set %d: ",i);
+            for(int j=0;j<vertex_set[i].get_size();++j){
+                printf("%d ", vertex_set[i].get_data(j));
+            }
+            putchar('\n');
+        }*/
         delete[] vertex_set;
-        // TODO : Computing multiplicty for a pattern
-        global_ans += local_ans;
+        // TODO : Computing multiplicity for a pattern
+        global_ans += local_ans;    // 将线程局部变量的计算结果加到总结过中
         
     }
+    // 除以使用容斥定理引入的冗余倍数,得到正确结果
+    //若未使用容斥定理in_exclusion_optimize_redundancy为1
     return global_ans / schedule.get_in_exclusion_optimize_redundancy();
 }
 
-void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet* vertex_set, VertexSet& subtraction_set, VertexSet& tmp_set, long long& local_ans, int depth) // 3 same # or @ in comment are useful in code generation ###
+// 深度优先回溯图匹配
+void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet* vertex_set,
+                                             VertexSet& subtraction_set, VertexSet& tmp_set,
+                                             long long& local_ans, int depth) // 3 same # or @ in comment are useful in code generation ###
 {
+    // depth为匹配深度,也可以视为第depth个结点,因为结点序号就是匹配的顺序, from 1 to size-1(size为模式图结点数)
+    // subtraction_set为当前已匹配的结点集,subtraction_set[i]对于着模式图中的第i个结点
+    // vertex_set为每个前缀的候选结点集,vertex_set[prefix_id]即以prefix_id号前缀为前缀的数据图中的所有结点
+
+    // depth结点的前缀索引
+    //第1次调用时获取的为第1个结点的前缀索引,理论上该前缀为[0],即只有第0个结点
     int loop_set_prefix_id = schedule.get_loop_set_prefix_id(depth);// @@@
+    // depth结点的前缀的结点集的大小
+    //
     int loop_size = vertex_set[loop_set_prefix_id].get_size();
+
     if (loop_size <= 0)
         return;
-
+    // depth结点的前缀的结点集
+    //depth结点的前缀一定以x(0<=x<depth)结点结尾,因此在上层递归调用中已经求出
     int* loop_data_ptr = vertex_set[loop_set_prefix_id].get_data_ptr();
 /* @@@ 
     //Case: in_exclusion_optimize_num = 2
@@ -315,15 +357,21 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
     }
 */
     //Case: in_exclusion_optimize_num > 1
+    // 若匹配的深度达到了倒数第k个
+    //若未使用容斥定理,k=0,不会递归到该深度,则以下代码不会生效
     if( depth == schedule.get_size() - schedule.get_in_exclusion_optimize_num() ) {
+        // 容斥定理的k值
         int in_exclusion_optimize_num = schedule.get_in_exclusion_optimize_num();// @@@
+        // 倒数k个结点的前缀索引的数组
         int loop_set_prefix_ids[ in_exclusion_optimize_num ];
         loop_set_prefix_ids[0] = loop_set_prefix_id;
         for(int i = 1; i < in_exclusion_optimize_num; ++i)
             loop_set_prefix_ids[i] = schedule.get_loop_set_prefix_id( depth + i );
+        // 遍历每种容斥定理的情况
         for(int optimize_rank = 0; optimize_rank < schedule.in_exclusion_optimize_group.size(); ++optimize_rank) {
             const std::vector< std::vector<int> >& cur_graph = schedule.in_exclusion_optimize_group[optimize_rank];
             long long val = schedule.in_exclusion_optimize_val[optimize_rank];
+            // 遍历一种容斥定理分组情况的每个分组,并求交集
             for(int cur_graph_rank = 0; cur_graph_rank < cur_graph.size(); ++ cur_graph_rank) {
                 //                VertexSet tmp_set;
                 
@@ -335,6 +383,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
                     val = val * VertexSet::unorderd_subtraction_size(vertex_set[id], subtraction_set);
                 }
                 else {
+                    // 求多个结点集的交集
                     int id0 = loop_set_prefix_ids[cur_graph[cur_graph_rank][0]];
                     int id1 = loop_set_prefix_ids[cur_graph[cur_graph_rank][1]];
                     tmp_set.init(this->max_degree);
@@ -355,55 +404,103 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
             
     }
     //Case: in_exclusion_optimize_num <= 1
+    // 匹配深度到达最后一个结点
     if (depth == schedule.get_size() - 1)
     {
         // TODO : try more kinds of calculation. @@@
         // For example, we can maintain an ordered set, but it will cost more to maintain itself when entering or exiting recursion.
-        if (schedule.get_total_restrict_num() > 0)
+        if (schedule.get_total_restrict_num() > 0)  // 限制条件数量>0
         {
+            // 以depth结点为终结点,(在数据图中)序号最小的起始结点
             int min_vertex = v_cnt;
-            for (int i = schedule.get_restrict_last(depth); i != -1; i = schedule.get_restrict_next(i))
+            // 遍历以depth为终结点的限制条件
+            for (int i = schedule.get_restrict_last(depth); i != -1; i = schedule.get_restrict_next(i)) {
                 if (min_vertex > subtraction_set.get_data(schedule.get_restrict_index(i)))
                     min_vertex = subtraction_set.get_data(schedule.get_restrict_index(i));
+            }
+            // depth结点的前缀的结点集
             const VertexSet& vset = vertex_set[loop_set_prefix_id];
-            int size_after_restrict = std::lower_bound(vset.get_data_ptr(), vset.get_data_ptr() + vset.get_size(), min_vertex) - vset.get_data_ptr();
-            if (size_after_restrict > 0)
-                local_ans += VertexSet::unorderd_subtraction_size(vertex_set[loop_set_prefix_id], subtraction_set, size_after_restrict);
+            // lower_bound():得到首个不小于某数的迭代器
+            // 小于min_vertex结点的数量
+            int size_after_restrict = std::lower_bound(vset.get_data_ptr(), vset.get_data_ptr() + vset.get_size(), min_vertex)
+                    - vset.get_data_ptr();
+            if (size_after_restrict > 0) {
+                // 将候选结点的前size_after_restrict结点排除已匹配的结点,剩余的阶段即为满足的结点
+                //其个数加到本线程的满足匹配的个数中
+                local_ans += VertexSet::unorderd_subtraction_size(vset, subtraction_set, size_after_restrict);
+            }
         }
-        else
-            local_ans += VertexSet::unorderd_subtraction_size(vertex_set[loop_set_prefix_id], subtraction_set); 
+        else {  // 若无限制条件
+            // 则候选结点集减去已匹配的结点,剩余结点的数量就是满足模式图的数量
+            local_ans += VertexSet::unorderd_subtraction_size(vertex_set[loop_set_prefix_id], subtraction_set);
+        }
+
+//        printf("vertex_set:\n");
+//        for(int i=0;i<schedule.get_total_prefix_num(); ++i){
+//            printf("No.%d: ", i);
+//            for(int j=0;j<vertex_set[i].get_size();++j){
+//                printf("%d ", vertex_set[i].get_data(j));
+//            }
+//            putchar('\n');
+//        }
+
         return;// @@@
     }
   
     // TODO : min_vertex is also a loop invariant @@@
+    // 以depth结点为终结点,(在数据图中)序号最小的起始结点
     int min_vertex = v_cnt;
+    // 遍历以depth为终结点的限制条件找到序号最小的结点
+    //对于同终结点的限制条件(a,c),(b,c),在模式图中:vertex_a<vertex_c,vertex_b<vertex_c
+    //则在数据图中则满足:vertex_a>vertex_c,vertex_b>vertex_c => min(vertex_a,vertex_b)>vertex_c
+    //所有下面的循环中找的下一个结点必须小于min_vertex,否则跳出循环
     for (int i = schedule.get_restrict_last(depth); i != -1; i = schedule.get_restrict_next(i))
         if (min_vertex > subtraction_set.get_data(schedule.get_restrict_index(i)))
             min_vertex = subtraction_set.get_data(schedule.get_restrict_index(i));
     if (depth == 1) Graphmpi::getinstance().get_loop(loop_data_ptr, loop_size);
     int ii = 0;
+    // 遍历depth结点的前缀的结点集
+    //由于求交集intersection()算法的特性,以序号从小到大进行遍历
     for (int &i = ii; i < loop_size; ++i)
     {
+        // 若min_vertex不大于depth结点的前缀的结点集中的第i个结点,则退出
+        //对于限制条件,数据图结点满足的大小关系和模式图中结点满足的大小关系正好相反
+        //如限制条件(a,b),在模式图中是vertex_a<vertex_b,而在匹配的数据图中是vertex_a>vertex_b
+        //由于loop_data_ptr数组是有序的,该结点不满足则后面的都不满足因此跳过
         if (min_vertex <= loop_data_ptr[i])
             break;
+        // depth结点的前缀的结点集中的第i个结点
         int vertex = loop_data_ptr[i];
+        // 若该结点在已搜索的结点中则跳过
         if (subtraction_set.has_data(vertex))
             continue;
         unsigned int l, r;
+        // 获取结点的边数据
         get_edge_index(vertex, l, r);
         bool is_zero = false;
+        // 遍历以depth结点为结尾的前缀
         for (int prefix_id = schedule.get_last(depth); prefix_id != -1; prefix_id = schedule.get_next(prefix_id))
         {
-            vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l], (int)r - l, prefix_id, vertex);
+            // 求以depth结点结尾前缀的父前缀的结点集vertex_set[father_id]与结点vertex的领域(input_data)的交集
+            //以depth结点结尾的前缀的父前缀实际上就是上一个匹配结点结尾的前缀,该函数实际上就是求交集操作,
+            //求出了以当前已匹配结点为前缀的所有候选结点,因为相同的前缀的候选结点的范围是相同的
+            vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l],
+                                                   (int)r - l, prefix_id, vertex);
+            // 若交集为则退出循环
             if( vertex_set[prefix_id].get_size() == 0) {
                 is_zero = true;
                 break;
             }
         }
+        // 有以depth结点为结尾的前缀, 但交集为零
+        //则下一深度的候选结点不存在,则跳过本次循环判断另一个本深度的候选结点
         if( is_zero ) continue;
         //subtraction_set.insert_ans_sort(vertex);
+        // 置入本次匹配的结点
         subtraction_set.push_back(vertex);
-        pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set, tmp_set, local_ans, depth + 1);// @@@
+        // 递归匹配下一深度的结点
+        pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set,
+                                         tmp_set, local_ans, depth + 1);// @@@
         subtraction_set.pop_back(); // @@@
     } 
     //if (depth == 1 && ii < loop_size) Graphmpi::getinstance().set_cur(subtraction_set.get_data(0));// @@@
@@ -411,32 +508,39 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
 // ###
 long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count, bool clique)
 {
-    Graphmpi &gm = Graphmpi::getinstance();
+    Graphmpi &gm = Graphmpi::getinstance();     // 获取Graphmpi对象
     long long global_ans = 0;
+// 并行
 #pragma omp parallel num_threads(thread_count)
     {
+// 仅主线程执行
 #pragma omp master
         {
             gm.init(thread_count, this, schedule);
         }
+// 同步屏障
 #pragma omp barrier //mynodel have to be calculated before running other threads
 #pragma omp master
         {
             global_ans = gm.runmajor();
         }
+
+        // 非主线程运行
         if (omp_get_thread_num()) {
             VertexSet* vertex_set = new VertexSet[schedule.get_total_prefix_num()];
-            long long local_ans = 0;
-            VertexSet subtraction_set;
+            long long local_ans = 0;    // 线程局部匹配结果
+            VertexSet subtraction_set;  // 已匹配结点集
             VertexSet tmp_set;
             subtraction_set.init();
             int last = -1;
+            // 设置使用MPI分布式
             gm.set_loop_flag();
             auto match_edge = [&](int vertex, int *data, int size) {
                 if (vertex != last) {
                     if (~last) subtraction_set.pop_back();
                     unsigned int l, r;
                     get_edge_index(vertex, l, r);
+                    // 设置0结点为结尾的前缀的结点集为当前匹配结点vertex的邻域
                     for (int prefix_id = schedule.get_last(0); prefix_id != -1; prefix_id = schedule.get_next(prefix_id)) {
                         vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, edge + l, r - l, prefix_id);
                     }
@@ -444,9 +548,11 @@ long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count
                     last = vertex;
                 }
                 gm.set_loop(data, size);
+                // 图匹配
                 pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set, tmp_set, local_ans, 1);
             };
-            for (unsigned int *data; data = gm.get_edge_range();) {
+            for (unsigned int *data; (data = gm.get_edge_range());) {
+                // 进行图匹配
                 match_edge(data[1], edge + data[2], data[3] - data[2]);
                 /*for (int i = 1; i <= data[4]; i++) {
                     int l, r;
@@ -455,7 +561,7 @@ long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count
                 }*/
             }
             delete[] vertex_set;
-            gm.report(local_ans);
+            gm.report(local_ans);   // 更新结果
         }
     }
     return global_ans;

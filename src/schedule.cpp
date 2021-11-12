@@ -272,8 +272,54 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
 
     build_loop_invariant();
     if( restricts_type != 0) add_restrict(best_pairs);
-    
+
     set_in_exclusion_optimize_redundancy();
+
+    printf("prefix:\n");
+    for(int i=0;i<total_prefix_num;++i){
+        printf("\tNo.%d: ", i);
+        for(int j=0;j<prefix[i].get_size();++j){
+            printf("%d ",prefix[i].get_data(j));
+        }
+        putchar('\n');
+    }
+
+    printf("restrict list:\n");
+    for(int i=0;i<size;++i){
+        printf("\tvertex%d: ",i);
+        for(int id=restrict_last[i];id!=-1;id=restrict_next[id]){
+            printf("%d ", restrict_index[id]);
+        }
+        putchar('\n');
+    }
+
+    printf("in_exclusion_optimize_group:\n");
+    for(int i=0;i<in_exclusion_optimize_group.size();++i){
+        printf("\t%d:\n",i);
+        for(int j=0;j<in_exclusion_optimize_group[i].size();++j){
+            printf("\t %d: ", j);
+            for(int k=0;k<in_exclusion_optimize_group[i][j].size();++k){
+                printf("%d ", in_exclusion_optimize_group[i][j][k]);
+            }
+            putchar('\n');
+        }
+    }
+    printf("in_exclusion_optimize_val: ");
+    for(int i=0;i<in_exclusion_optimize_val.size();++i){
+        printf("%d ",in_exclusion_optimize_val[i]);
+    }
+    putchar('\n');
+
+    printf("last:");
+    for(int i=0;i<size;++i){
+        printf("%d ", last[i]);
+    }
+    putchar('\n');
+    printf("next:");
+    for(int i=0;i<total_prefix_num;++i){
+        printf("%d ",next[i]);
+    }
+    putchar('\n');
 }
 
 Schedule::Schedule(const int* _adj_mat, int _size)
@@ -283,10 +329,10 @@ Schedule::Schedule(const int* _adj_mat, int _size)
 
     memcpy(adj_mat, _adj_mat, size * size * sizeof(int));
 
-    // QUE:为什么这么计算max_prefix_num,是么时候取到最大值
-    // 第i个循环涉及的候选结点至多为前i-1个结点的邻结点的交集,是结点是全连通图,
-    //第1个结点邻结点有(size-1)个,第2个结点的临界点(不包括1结点)有(size-2)个,...
-    //全部则为 size*(size-1)/2 个
+    // QUE:为什么这么计算max_prefix_num,是么时候取到最大值? ANS:根据前缀的生成规则,
+    //第i个结点可能与前i-1个结点连接,因此其前缀为(0,1,...,i-1),由于前缀的父前缀也会同时生成,
+    //因此共有i个前缀:(0),(0,1),(0,1,2)...(0,1,...,i-1),对于size个结点,最多的前缀数
+    //即为0+1+2+...size-1 = size * (size-1) / 2,但应该有重复不会达到该值
     // The I-th loop consists of at most the intersection of i-1 VertexSet.
     // So the max number of prefix = 0 + 1 + ... + size-1 = size * (size-1) / 2
     int max_prefix_num = size * (size - 1) / 2;
@@ -434,7 +480,9 @@ void Schedule::add_restrict(const std::vector< std::pair<int, int> >& restricts)
     for (const auto& p : restrict_pair)
     {
         // p.first must be greater than p.second
-        // QUE:why p.first>p.second, should p.first<p.second?
+        // QUE:why p.first>p.second, should p.first<p.second? ANS:这里的大小应该不是指的
+        //模式图中限制条件结点的序号大小,而是在实际匹配数据图时,要求限制条件中前1个结点对应的数据图结点
+        //序号大于后一结点
         // 记录限制条件的起始结点
         restrict_index[total_restrict_num] = p.first;
         // 限制条件终止结点构造链表
@@ -442,6 +490,15 @@ void Schedule::add_restrict(const std::vector< std::pair<int, int> >& restricts)
         restrict_last[p.second] = total_restrict_num;
         ++total_restrict_num;
     }
+/*
+    printf("restrict list:\n");
+    for(int i=0;i<size;++i){
+        printf("%d: ",i);
+        for(int id=restrict_last[i];id!=-1;id=restrict_next[id]){
+            printf("%d ",restrict_index[id]);
+        }
+        putchar('\n');
+    }*/
 }
 
 // 获取同构置换的数量
@@ -670,7 +727,7 @@ void Schedule::aggressive_optimize_dfs(Pattern base_dag, std::vector< std::vecto
                                         ordered_pairs_vector);
             }
         }
-        // QUE:为什么若有多余一个对换则直接退出遍历置换乘积
+        // QUE:为什么若有多于一个对换则直接退出遍历置换乘积
         if( two_element_number >= 1) {
             break;
         }
@@ -1217,6 +1274,7 @@ void Schedule::init_in_exclusion_optimize() {
     int* in_exclusion_val;
     in_exclusion_val = new int[ optimize_num * 2];
 
+    // 遍历k值
     for(int n = 1; n <= optimize_num; ++n) {
         DisjointSetUnion dsu(n);
         int m = n * (n - 1) / 2;    // 完全图的边数
@@ -1237,6 +1295,8 @@ void Schedule::init_in_exclusion_optimize() {
 
         // 一共m条边,每个边用1位表示是否存在
         // s则表示n个结点的一种图的情况, 此处遍历n个结点存在的2^m种情况
+        // BUG:s为int类型,sizeof(int)=32位,因此m最多为30,否则会出现溢出错误
+        //由于m=n*(n-1)/2,因此n最多为8,超过后下述代码将出错,一般不会出现该情况
         for(int s = 0; s < (1<<m); ++s) {
             dsu.init();
             int bit_cnt = 0;    // 记录该种图的情况下边的数目
@@ -1266,10 +1326,12 @@ void Schedule::init_in_exclusion_optimize() {
     delete[] in_exclusion_val;
 }
 
-
+// 获取容斥定理的分组
 void Schedule::get_in_exclusion_optimize_group(int depth, int* id, int id_cnt, int* in_exclusion_val) {
+    // depth from 0 to k
     // id为大小为in_exclusion_optimize_num(k)的数组
     //id[i]=0~i, i from 0 to id_cnt-1, id_cnt from 0 to in_exclusion_optimize_num
+
     if( depth == in_exclusion_optimize_num) {
         int* size = new int[id_cnt];
         for(int i = 0; i < id_cnt; ++i)
@@ -1282,7 +1344,7 @@ void Schedule::get_in_exclusion_optimize_group(int depth, int* id, int id_cnt, i
         for(int i = 1; i < id_cnt; ++i) {
             int tmp0 = val[0];
             int tmp1 = val[1];
-
+            // QUE:这么计算的原理
             val[0] = tmp0 * in_exclusion_val[ size[i] * 2 - 2] + tmp1 * in_exclusion_val[ size[i] * 2 - 1];
             val[1] = tmp0 * in_exclusion_val[ size[i] * 2 - 1] + tmp1 * in_exclusion_val[ size[i] * 2 - 2];
         }
@@ -1544,7 +1606,7 @@ void Schedule::restricts_generate(const int* cur_adj_mat, std::vector< std::vect
     Graph* complete;
     DataLoader* D = new DataLoader();
     // 构造一个结点数为size+1的完全图
-    // QUE:此处图结点数为什么是size+1,按照论文应该是size?
+    // QUE:此处图结点数为什么是size+1,按照论文应该是size? ANS:结点数不重要,在有无限制条件下匹配的的比值都是同构数
     assert(D->load_complete(complete, size + 1));
     // ans=ans_without/automorphisms_count, ans_without即不使用限制条件进行的完全图模式匹配
     long long ans = complete->pattern_matching( schedule, 1) / schedule.get_multiplicity();
@@ -1602,7 +1664,8 @@ int Schedule::get_vec_optimize_num(const std::vector<int> &vec) {
 
 double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, const std::vector< std::pair<int,int> > &pairs,
                                                 int v_cnt, unsigned int e_cnt, long long tri_cnt) {
-    // order为一种schedule
+    // order:一种schedule
+    // pairs:限制条件对,是基于经schedule重排模式图得到的
 
     int max_degree = get_max_degree();
 
@@ -1615,12 +1678,13 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
     // 论文中的p_2=tri_cnt*|V_G|/(2*|E_G|)^2
     double p1 = tri_cnt * 1.0 * v_cnt / e_cnt / e_cnt; 
 
-    // p_size[i]=p_size[i-1]*p0=v_cnt*(p0^i)
+    // p_size[i]=p_size[i-1]*p0=v_cnt*(p0^i)=|V_G|*(p_1)^i
+    //p_size[0]=|V_G|,p_size[1]=|V_G|*p_1
     p_size[0] = v_cnt;
     for(int i = 1;i < max_degree; ++i) {
         p_size[i] = p_size[i-1] * p0;
     }
-    //pp_size[i]=pp_size[i-1]*p1=p1^i
+    //pp_size[i]=pp_size[i-1]*p1=p1^i=p_2^i
     pp_size[0] = 1;
     for(int i = 1; i < max_degree; ++i) {
         pp_size[i] = pp_size[i-1] * p1;
@@ -1647,6 +1711,7 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
     do {
         for(int i = 0; i < restricts_size; ++i)
             if(tmp[restricts[i].first] > tmp[restricts[i].second]) {
+                //sum[i]此时记录的是满足第i个限制条件的排列个数
                 sum[i] += 1;
             }
             else break;
@@ -1656,9 +1721,11 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
     // total=1*2*3*...size=(size)!
     double total = 1;
     for(int i = 2; i <= size; ++i) total *= i;
+    // sum[i]=(s[i]/total)/(s[i-1]/total)=s[i]/s[i-1]
+    // sum[i]此时记录的为在满足前i-1个限制条件的前提下满足第i个限制条件的概率,
+    //相当于论文中的(1-f_i)
     for(int i = 0; i < restricts_size; ++i)
         sum[i] = sum[i] /total;
-    // sum[i]=sum[i]/sum[i-1],sum[0]=sum[0]/(size)!
     for(int i = restricts_size - 1; i > 0; --i)
         sum[i] /= sum[i - 1];
 
@@ -1668,7 +1735,7 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
     // 性能开销参数,代表当前configuration的性能开销,越小越好
     double val = 1;
     // 嵌套计算cost_i
-    //此处i:n-1->0,论文中为1->n (n==size即结点数)
+    //此处i:n-1->0,论文中为n->1 (n==size即结点数)
     for(int i = size - 1; i >= 0; --i) {
         int cnt_forward = 0;    // 该结点与比自己序号小的结点的边数
         int cnt_backward = 0;   // 该结点与比自己序号大的阶段的边数
@@ -1680,21 +1747,39 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
                 ++cnt_backward;
 
         int c = cnt_forward;
+        // invariant_size[j]数组的大小表示与结点j相连且比j大的结点数量
+        // invariant_size[j][k]表示与结点j相连的一个结点
         for(int j = i - 1; j >= 0; --j)
             if(cur_adj_mat[INDEX(j, i, size)])
                 invariant_size[j].push_back(c--);
 
-        for(int j = 0; j < invariant_size[i].size(); ++j)
-            if(invariant_size[i][j] > 1) 
+        // +c_i
+        //求解的过程为父前缀结点集个结点和当前结点邻域求交集
+        //假设以该结点结尾的前缀有m个结点,m=invariant_size[i][j]
+        //则父前缀结点集有m-1个结点,根据论文,其结点集是求交集的结果,基数为|V_G|*p_1*p_2^(m-1-1)
+        //当前结点的邻域与结点的度数有关,可以用平均度数表示,即2|E_G|/|V_G|=|V_G|*p_1
+        //因此以下循环相当于是求所有以该结点为结尾的前缀的结点集的开销
+        for(int j = 0; j < invariant_size[i].size(); ++j){
+            if(invariant_size[i][j] > 1) {
+                //val+=|V_G|*p_1 * p_2^(invariant_size[i][j]-1-1) + |V_G|*p_1
                 val += p_size[1] * pp_size[invariant_size[i][j] - 2] + p_size[1];
+            }
+        }
         val += 1;
+        // ×(1-f_i),经限制条件过滤的概率
         for(int j = 0; j < restricts_size; ++j)
             if(restricts[j].second == i)
                 val *=  sum[j];
+        // ×l_i,即本层循环的基数,
+        //也就是该结点的前缀的结点集的大小,假设前缀有m个结点,m=cnt_forward
+        //在i!=0时,前缀的结点集是个m结点邻域交集,根据论文,结点集的大小为|V_G|*p_1*p_2^(m-1)
         if( i ) {
+            // val*=|V_G|*p_1 * p_2^(cnt_forward-1)
             val *= p_size[1] * pp_size[ cnt_forward - 1 ];
         }
+        //在i=0时是最外层循环,即遍历所有数据图结点的循环,循环的基数是结点个数|V_G|
         else {
+            // val *= |V_G|
             val *= p_size[0];
         }
     }
@@ -1880,7 +1965,8 @@ int Schedule::get_in_exclusion_optimize_num_when_not_optimize() {
     return get_vec_optimize_num(I);
 }
 
-// QUE
+// 计算容斥定理优化时的冗余值
+//即论文中的x,由于对最后k个结点使用容斥定理时未考虑限制条件产生的同构,通过除以x去除
 void Schedule::set_in_exclusion_optimize_redundancy() {
     int tmp = get_in_exclusion_optimize_num();
     if(tmp <= 1) {
@@ -1892,11 +1978,15 @@ void Schedule::set_in_exclusion_optimize_redundancy() {
         assert(D->load_complete(complete, get_size()));
         delete D;
         in_exclusion_optimize_redundancy = 1;
+        // 在有k个结点的情况下使用容斥定理,得到在容斥定理的情况下满足的匹配数量
         long long ans = complete->pattern_matching( *this, 1);
+        // 将k个结点值0,即不使用容斥定理时,得到的匹配数量
         set_in_exclusion_optimize_num(0);
         long long true_ans = complete->pattern_matching( *this, 1);
         set_in_exclusion_optimize_num(tmp);
         delete complete;
+        // 计算出容易的同构数
+        //根据论文考虑限制条件的实际数量应为ans=ans_IEP/x => x = ans_IEP/ans
         in_exclusion_optimize_redundancy = ans / true_ans;
     }
 }

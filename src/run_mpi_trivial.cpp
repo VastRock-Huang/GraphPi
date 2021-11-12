@@ -27,7 +27,7 @@ int main(int argc,char *argv[])
     //DataType my_type = DataType::Twitter;
     DataType my_type = DataType::Orkut;
 
-    if (D.load_data(g,my_type,path.c_str()) != true)
+    if (!D.load_data(g,my_type,path.c_str()))
     {
         printf("Load error.");
         return -1;
