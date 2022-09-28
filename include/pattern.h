@@ -38,6 +38,6 @@ public:
 private:
     Pattern& operator =(const Pattern&);
     void get_full_permutation(std::vector< std::vector<int> >& vec, bool use[], std::vector<int> tmp_vec, int depth) const;
-    int* adj_mat;   // 一维化的邻接矩阵
-    int size;   // 图结点数
+    int* adj_mat;   //!< 一维化的邻接矩阵
+    int size;   //!< 图结点数
 };

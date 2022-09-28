@@ -13,7 +13,7 @@ enum DataType {
     Twitter,
     CiteSeer,
     Wiki_Vote,
-    Test,
+    Test,       //!< testdata file
     Invalid
 };
 

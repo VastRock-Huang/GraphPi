@@ -73,7 +73,7 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     int* degree = new int[g->v_cnt];
     memset(degree, 0, g->v_cnt * sizeof(int));
     g->e_cnt *= 2;  // QUE:边数*2的原因 ANS:CSR存图法存的相当于有向边,1条无向边会存两次,边数*2用于表示CSR数组的大小
-    std::pair<int,int> *e = new std::pair<int,int>[g->e_cnt];
+    auto *e = new std::pair<int,int>[g->e_cnt];
     id.clear();
     int x,y;
     int tmp_v;

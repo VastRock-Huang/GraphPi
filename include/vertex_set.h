@@ -17,16 +17,16 @@ public:
     static int unorderd_subtraction_size(const VertexSet& set0, const VertexSet& set1, int size_after_restrict = -1);
     void insert_ans_sort(int val);
     inline int get_size() const { return size;}
-    // 返回data[i]
+    //! 返回data[i]
     inline int get_data(int i) const { return data[i];}
     inline const int* get_data_ptr() const { return data;}
     inline int* get_data_ptr() { return data;}
-    // 将输入值存入内部数组
+    //! 将输入值存入内部数组
     inline void push_back(int val) { data[size++] = val;}
     inline void pop_back() { --size;}
     inline int get_last() const { return data[size - 1];}
     bool has_data(int val);
-    // 两个结点邻域交集的大小,是度数第二大的结点的度数
+    //! 两个结点邻域交集的大小,是度数第二大的结点的度数
     static int max_intersection_size;
     void build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
                           int input_size, int prefix_id, int min_vertex = -1, bool clique = false);

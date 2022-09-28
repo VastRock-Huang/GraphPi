@@ -56,7 +56,7 @@ VertexSet::~VertexSet()
         delete[] data;
 }
 
-// 求两结点交集,结果存到内部数组
+//! 求两结点交集,结果存到内部数组
 void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int min_vertex, bool clique)
 {
     //set0和set1中的结点应该是升序排列的
@@ -159,12 +159,13 @@ void VertexSet::intersection_with(const VertexSet& set1) {
     }
 }
 
-// 求给定prefix_id对应的父前缀的结点集vertex_set[father_id]与某个结点的领域(input_data)的交集
+//! 求给定prefix_id对应的父前缀的结点集vertex_set[father_id]与某个结点的领域(input_data)的交集
+//! \param[in] input_data &edge[l],是某个结点在edge数组中的起点. 整个数组表示该结点的所有边的终结点数组
+//! \param[in] input_size input_data数组的大小,也是该结点的边数
 void VertexSet::build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
                                  int input_size, int prefix_id, int min_vertex, bool clique)
 {
-    // input_data: &edge[l],是某个结点在edge数组中的起点. 整个数组表示该结点的所有边的终结点数组
-    // input_size: input_data数组的大小,也是该结点的边数
+
     // min_vertex = -1
     // clique = false
 
@@ -198,7 +199,7 @@ void VertexSet::insert_ans_sort(int val)
     ++size;
 }
 
-// 判断val是否在该结点集中
+//! 判断val是否在该结点集中
 bool VertexSet::has_data(int val)
 {
     for (int i = 0; i < size; ++i)
@@ -207,7 +208,7 @@ bool VertexSet::has_data(int val)
     return false;
 }
 
-// set0的前size_after_restrict个结点与set1结点集作差,返回作差后集合的大小
+//! set0的前size_after_restrict个结点与set1结点集作差,返回作差后集合的大小
 int VertexSet::unorderd_subtraction_size(const VertexSet& set0, const VertexSet& set1, int size_after_restrict)
 {
     int size0 = set0.get_size();

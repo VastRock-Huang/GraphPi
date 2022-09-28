@@ -11,7 +11,7 @@ Graphmpi& Graphmpi::getinstance() {
     return gm;
 }
 
-// 初始化函数
+//! 初始化函数
 void Graphmpi::init(int _threadcnt, Graph* _graph, const Schedule& schedule) {
     initialized = true;
     threadcnt = _threadcnt;
@@ -44,7 +44,7 @@ void Graphmpi::init(int _threadcnt, Graph* _graph, const Schedule& schedule) {
     fflush(stdout);
 }
 
-// 主线程运行
+//! 主线程运行
 long long Graphmpi::runmajor() {
     long long tot_ans = 0;      // 总匹配结果
     const int IDLE = 2, END = 3, OVERWORK = 4, REPORT = 5, SERVER = 0;
@@ -273,7 +273,7 @@ unsigned int* Graphmpi::get_edge_range() {
     return ~data[thread_num][1] ? data[thread_num] : nullptr;
 }
 
-// 更新结点匹配结果,并增加空闲线程数
+//! 更新结点匹配结果,并增加空闲线程数
 void Graphmpi::report(long long local_ans) {
 // omp 原子方式执行下一语句
 #pragma omp atomic

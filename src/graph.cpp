@@ -138,7 +138,7 @@ void Graph::tc_mt(long long *global_ans) {
     }
 }
 
-// 获取v结点的边在edge数组中的范围,范围为[l,r-1]
+//! 获取v结点的边在edge数组中的范围,范围为[l,r-1]
 void Graph::get_edge_index(int v, unsigned int& l, unsigned int& r) const
 {
     l = vertex[v];
@@ -278,22 +278,21 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
         delete[] vertex_set;
         // TODO : Computing multiplicity for a pattern
         global_ans += local_ans;    // 将线程局部变量的计算结果加到总结过中
-        
+
     }
     // 除以使用容斥定理引入的冗余倍数,得到正确结果
     //若未使用容斥定理in_exclusion_optimize_redundancy为1
     return global_ans / schedule.get_in_exclusion_optimize_redundancy();
 }
 
-// 深度优先回溯图匹配
+//! 深度优先回溯图匹配
+//! \param[in] depth 匹配深度,也可以视为第depth个结点,因为结点序号就是匹配的顺序, from 1 to size-1(size为模式图结点数)
+//! \param[in] subtraction_set 当前已匹配的结点集,subtraction_set[i]对应着模式图中的第i个结点
+//! \param[in] vertex_set 每个前缀的候选结点集,vertex_set[prefix_id]即以prefix_id号前缀为前缀的数据图中的所有结点
 void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet* vertex_set,
                                              VertexSet& subtraction_set, VertexSet& tmp_set,
                                              long long& local_ans, int depth) // 3 same # or @ in comment are useful in code generation ###
 {
-    // depth为匹配深度,也可以视为第depth个结点,因为结点序号就是匹配的顺序, from 1 to size-1(size为模式图结点数)
-    // subtraction_set为当前已匹配的结点集,subtraction_set[i]对于着模式图中的第i个结点
-    // vertex_set为每个前缀的候选结点集,vertex_set[prefix_id]即以prefix_id号前缀为前缀的数据图中的所有结点
-
     // depth结点的前缀索引
     //第1次调用时获取的为第1个结点的前缀索引,理论上该前缀为[0],即只有第0个结点
     int loop_set_prefix_id = schedule.get_loop_set_prefix_id(depth);// @@@
@@ -374,7 +373,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
             // 遍历一种容斥定理分组情况的每个分组,并求交集
             for(int cur_graph_rank = 0; cur_graph_rank < cur_graph.size(); ++ cur_graph_rank) {
                 //                VertexSet tmp_set;
-                
+
                 //if size == 1 , we will not call intersection(...)
                 //so we will not allocate memory for data
                 //otherwise, we need to copy the data to do intersection(...)
@@ -401,7 +400,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
             local_ans += val;
         }
         return;// @@@
-            
+
     }
     //Case: in_exclusion_optimize_num <= 1
     // 匹配深度到达最后一个结点
@@ -428,6 +427,11 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
                 // 将候选结点的前size_after_restrict结点排除已匹配的结点,剩余的阶段即为满足的结点
                 //其个数加到本线程的满足匹配的个数中
                 local_ans += VertexSet::unorderd_subtraction_size(vset, subtraction_set, size_after_restrict);
+                printf("embeding:");
+                for (auto i = 0; i < subtraction_set.get_size(); ++i) {
+                    printf("%d, ", subtraction_set.get_data(i));
+                }
+                printf("\n");
             }
         }
         else {  // 若无限制条件
@@ -446,7 +450,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
 
         return;// @@@
     }
-  
+
     // TODO : min_vertex is also a loop invariant @@@
     // 以depth结点为终结点,(在数据图中)序号最小的起始结点
     int min_vertex = v_cnt;
@@ -486,7 +490,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
             //求出了以当前已匹配结点为前缀的所有候选结点,因为相同的前缀的候选结点的范围是相同的
             vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l],
                                                    (int)r - l, prefix_id, vertex);
-            // 若交集为则退出循环
+            // 若交集为空则退出循环
             if( vertex_set[prefix_id].get_size() == 0) {
                 is_zero = true;
                 break;
@@ -502,9 +506,9 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
         pattern_matching_aggressive_func(schedule, vertex_set, subtraction_set,
                                          tmp_set, local_ans, depth + 1);// @@@
         subtraction_set.pop_back(); // @@@
-    } 
+    }
     //if (depth == 1 && ii < loop_size) Graphmpi::getinstance().set_cur(subtraction_set.get_data(0));// @@@
-} 
+}
 // ###
 long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count, bool clique)
 {

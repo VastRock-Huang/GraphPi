@@ -136,6 +136,10 @@ The result (i.e., the number of embeddings) is stored in `ans`.
 
 If you are still confused, you can see `tianhe/baseline_test.cpp` as an example. This program is following steps above.
 
+```
+../baseline_test Test ../../dataset/testdata 3 011101110
+```
+
 ## How to run the distributed version
 
 GraphPi uses MPI to implement the distributed version.
