@@ -164,7 +164,7 @@ bool DataLoader::general_load_data(Graph *&g, DataType type, const char* path, i
     g->edge = new int[g->e_cnt];
     g->vertex = new unsigned int[g->v_cnt + 1];
     // CSR 存图法
-    bool* have_edge = new bool[g->v_cnt];   // 记录结点是否右边
+    bool* have_edge = new bool[g->v_cnt];   // 记录结点是否有边
     int lst_v = -1;
     for(int i = 0; i < g->v_cnt; ++i) have_edge[i] = false;
     for(unsigned int i = 0; i < g->e_cnt; ++i) {

@@ -139,6 +139,9 @@ If you are still confused, you can see `tianhe/baseline_test.cpp` as an example.
 ```
 ../baseline_test Test ../../dataset/testdata 3 011101110
 ```
+```
+./baseline_test Wiki-Vote ../dataset/wiki-vote_input 4 0111101111001100
+```
 
 ## How to run the distributed version
 

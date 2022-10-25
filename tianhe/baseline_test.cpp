@@ -21,6 +21,7 @@ void test_pattern(Graph* g, const Pattern &pattern, int performance_modeling_typ
     assert(is_pattern_valid);
 
     t1 = get_wall_time();
+    printf("flag1\n");
     long long ans = g->pattern_matching(schedule, thread_num);
     t2 = get_wall_time();
     printf("---------------------\noutput:\n");

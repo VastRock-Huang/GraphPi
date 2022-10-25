@@ -10,7 +10,7 @@ SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 ADD_COMPILE_OPTIONS(-std=c++11)
 
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 if(OPENMP_FOUND)
     message("OPENMP FOUND")
     INCLUDE_DIRECTORIES(${OpenMP_INCLUDE_DIRS})
@@ -23,7 +23,7 @@ if(OPENMP_FOUND)
     #TARGET_COMPILE_OPTIONS(graph_mining PRIVATE -Wall ${OpenMP_CXX_FLAGS})
 endif()
 
-find_package(MPI REQUIRED)
+find_package(MPI)
 if(MPI_FOUND)
     SET(CMAKE_CXX_COMPILER mpicxx)   
 endif()

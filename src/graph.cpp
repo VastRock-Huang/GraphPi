@@ -120,7 +120,7 @@ long long Graph::triangle_counting_mt(int thread_count) {
 
 void Graph::tc_mt(long long *global_ans) {
     long long my_ans = 0;
-    #pragma omp for schedule(dynamic)
+//    #pragma omp for schedule(dynamic)
     for(int v = 0; v < v_cnt; ++v) {
         // for v in G
         unsigned int l, r;
@@ -203,7 +203,7 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
 // omp parallel: OpenMP定义并行区域
 // num_threads(): 设置线程数
 // reduction(+: <var>): 表示该变量var最后多个线程求和(+)
-#pragma omp parallel num_threads(thread_count) reduction(+: global_ans)
+//#pragma omp parallel num_threads(thread_count) reduction(+: global_ans)
     {
         double start_time = get_wall_time();
         double current_time;
@@ -217,7 +217,7 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
 // omp for: 分配循环到多线程
 // schedule(dynamic): 动态分配到多线程
 // nowait: 取消for循环后的隐含屏障
-#pragma omp for schedule(dynamic) nowait
+//#pragma omp for schedule(dynamic) nowait
         // 遍历输入数据图的每个结点
         for (int vertex = 0; vertex < v_cnt; ++vertex)
         {
@@ -278,6 +278,7 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
         delete[] vertex_set;
         // TODO : Computing multiplicity for a pattern
         global_ans += local_ans;    // 将线程局部变量的计算结果加到总结过中
+        printf("time + 1\n");
 
     }
     // 除以使用容斥定理引入的冗余倍数,得到正确结果
@@ -427,11 +428,11 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
                 // 将候选结点的前size_after_restrict结点排除已匹配的结点,剩余的阶段即为满足的结点
                 //其个数加到本线程的满足匹配的个数中
                 local_ans += VertexSet::unorderd_subtraction_size(vset, subtraction_set, size_after_restrict);
-                printf("embeding:");
-                for (auto i = 0; i < subtraction_set.get_size(); ++i) {
-                    printf("%d, ", subtraction_set.get_data(i));
-                }
-                printf("\n");
+//                printf("embeding:");
+//                for (auto i = 0; i < subtraction_set.get_size(); ++i) {
+//                    printf("%d, ", subtraction_set.get_data(i));
+//                }
+//                printf("\n");
             }
         }
         else {  // 若无限制条件
