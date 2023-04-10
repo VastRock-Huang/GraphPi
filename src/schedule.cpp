@@ -5,6 +5,7 @@
 #include <cstring>
 #include <assert.h>
 #include <algorithm>
+#include <iostream>
 
 Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
                    int performance_modeling_type, int restricts_type,
@@ -40,7 +41,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
         // schedules的候选排列
         std::vector< std::vector<int> > candidate_permutations;
         candidate_permutations.clear();
-        
+
         bool use[size];
         for (int i = 0; i < size; ++i) use[i] = false;
         std::vector<int> tmp_vec;
@@ -61,7 +62,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
             std::vector< std::vector<int> > tmp;
             tmp.clear();
             // 仅保留满足模式k值的排列
-            for(const auto &vec : candidate_permutations) 
+            for(const auto &vec : candidate_permutations)
                 if(get_vec_optimize_num(vec) == max_val) {
                     tmp.push_back(vec);
                 }
@@ -72,7 +73,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
         int *best_order = new int[size];
         double min_val;
         bool have_best = false;
-        
+
         // 遍历每个候选schedule
         for(const auto &vec : candidate_permutations) {
             int rank[size];     // 记录排列的序号
@@ -130,6 +131,30 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
                     best_pairs = Empty;
                 }
             }
+//            std::cout <<"cur_adj:[";
+//            for(unsigned i = 0; i < size; ++i) {
+//                for(unsigned j =0; j< size; ++j) {
+//                    std::cout << cur_adj_mat[INDEX(i,j,size)];
+//                }
+//                std::cout <<" ";
+//            }
+//            std::cout <<"]\n";
+//
+//            std::cout <<"permut:[";
+//            for(auto x: vec) {
+//                std::cout << x << " ";
+//            }
+//            std::cout << "]\n";
+//
+//            std::cout << "restricts_vec:[\n";
+//            for (const auto &rs: restricts_vector) {
+//                std::cout << " [";
+//                for (const auto &p: rs) {
+//                    std::cout << "(" << p.first << ", " << p.second << ") ";
+//                }
+//                std::cout << "]\n";
+//            }
+//            std::cout << "]\n";
 
             // 遍历每组限制条件
             for(const auto& pairs : restricts_vector) {
@@ -163,7 +188,7 @@ Schedule::Schedule(const Pattern& pattern, bool &is_pattern_valid,
         const int* pattern_adj_mat = pattern.get_adj_mat_ptr();
         for(int i = 0; i < size; ++i)
             for(int j = 0; j < size; ++j)
-                adj_mat[INDEX(rank[i], rank[j], size)] = pattern_adj_mat[INDEX(i, j, size)]; 
+                adj_mat[INDEX(rank[i], rank[j], size)] = pattern_adj_mat[INDEX(i, j, size)];
         delete[] best_order;
     }
     else {  // not use performance modeling
@@ -470,8 +495,6 @@ void Schedule::add_restrict(const std::vector< std::pair<int, int> >& restricts)
         else ++i;
     }
 
-
-
     int max_prefix_num = size * (size - 1) / 2;
     memset(restrict_last, -1, size * sizeof(int));
     memset(restrict_next, -1, max_prefix_num * sizeof(int));
@@ -602,10 +625,19 @@ void Schedule::aggressive_optimize(std::vector< std::pair<int, int> >& ordered_p
 // Schedule::aggressive_optimize(...) can only get one valid restrictions
 // but in this function, we try our best to find more restrictions
 // WARNING: the restrictions in ordered_pairs_vector may NOT CORRECT
-void Schedule::aggressive_optimize_get_all_pairs(std::vector< std::vector< std::pair<int, int> > >& ordered_pairs_vector) 
+void Schedule::aggressive_optimize_get_all_pairs(std::vector< std::vector< std::pair<int, int> > >& ordered_pairs_vector)
 {
     // 与模式同构的置换集
     std::vector< std::vector<int> > isomorphism_vec = get_isomorphism_vec();
+//    std::cout << "isomorphism_vec:[\n";
+//    for (const auto &rs: isomorphism_vec) {
+//        std::cout << " [";
+//        for (const auto &x: rs) {
+//            std::cout << x << " ";
+//        }
+//        std::cout << "]\n";
+//    }
+//    std::cout << "]\n";
 
     // 模式同构对应的循环置换的乘积的集合
     //permutation_groups[i]表示一个同构对应的循环置换乘积
@@ -738,7 +770,7 @@ void Schedule::aggressive_optimize_dfs(Pattern base_dag, std::vector< std::vecto
 
 }
 
-void Schedule::GraphZero_aggressive_optimize(std::vector< std::pair<int, int> >& ordered_pairs) const { 
+void Schedule::GraphZero_aggressive_optimize(std::vector< std::pair<int, int> >& ordered_pairs) const {
     std::vector< std::vector<int> > Aut;
     GraphZero_get_automorphisms(Aut);
 
@@ -775,7 +807,7 @@ void Schedule::GraphZero_aggressive_optimize(std::vector< std::pair<int, int> >&
         }
         Aut = stabilized_aut;
     }
-    
+
     ordered_pairs.clear(); // In GraphZero paper, this vector's name is 'L'
 
     for(int i = 0; i < L.size(); ++i) {
@@ -910,7 +942,7 @@ void Schedule::performance_modeling(int* best_order, std::vector< std::vector<in
     p_size = new double[max_degree];
 
     double p = e_cnt * 1.0 / v_cnt / v_cnt;
-    
+
     p_size[0] = v_cnt;
     for(int i = 1;i < max_degree; ++i) {
         p_size[i] = p_size[i-1] * p;
@@ -918,7 +950,7 @@ void Schedule::performance_modeling(int* best_order, std::vector< std::vector<in
 
     order = new int[size];
     rank = new int[size];
-    
+
     double min_val;
     bool have_best = false;
     std::vector<int> invariant_size[size];
@@ -940,7 +972,7 @@ void Schedule::performance_modeling(int* best_order, std::vector< std::vector<in
             }
         }
         if( is_valid == false ) continue;
-        
+
         for(int i = 0; i < size; ++i) rank[order[i]] = i;
         int* cur_adj_mat;
         cur_adj_mat = new int[size*size];
@@ -991,7 +1023,7 @@ void Schedule::performance_modeling(int* best_order, std::vector< std::vector<in
                     invariant_size[j].push_back(c--);
 
             for(int j = 0; j < invariant_size[i].size(); ++j)
-                if(invariant_size[i][j] > 1) 
+                if(invariant_size[i][j] > 1)
                     val += p_size[invariant_size[i][j] - 1] + p_size[1];
             for(int j = 0; j < restricts_size; ++j)
                 if(restricts[j].second == i)
@@ -1055,7 +1087,7 @@ void Schedule::bug_performance_modeling(int* best_order, std::vector< std::vecto
             }
         }
         if( is_valid == false ) continue;
-        
+
         for(int i = 0; i < size; ++i) rank[order[i]] = i;
         int* cur_adj_mat;
         cur_adj_mat = new int[size*size];
@@ -1107,7 +1139,7 @@ void Schedule::bug_performance_modeling(int* best_order, std::vector< std::vecto
                         invariant_size[j].push_back(c--);
 
                 for(int j = 0; j < invariant_size[i].size(); ++j)
-                    if(invariant_size[i][j] > 1) 
+                    if(invariant_size[i][j] > 1)
                         val += p_size[invariant_size[i][j] - 1] + p_size[1];
                 for(int j = 0; j < restricts_size; ++j)
                     if(restricts[j].second == i)
@@ -1144,8 +1176,8 @@ void Schedule::new_performance_modeling(int* best_order, std::vector< std::vecto
     pp_size = new double[max_degree];
 
     double p0 = e_cnt * 1.0 / v_cnt / v_cnt;
-    double p1 = tri_cnt * 1.0 * v_cnt / e_cnt / e_cnt; 
-    
+    double p1 = tri_cnt * 1.0 * v_cnt / e_cnt / e_cnt;
+
     p_size[0] = v_cnt;
     for(int i = 1;i < max_degree; ++i) {
         p_size[i] = p_size[i-1] * p0;
@@ -1157,7 +1189,7 @@ void Schedule::new_performance_modeling(int* best_order, std::vector< std::vecto
 
     order = new int[size];
     rank = new int[size];
-    
+
     double min_val;
     bool have_best = false;
     std::vector<int> invariant_size[size];
@@ -1179,7 +1211,7 @@ void Schedule::new_performance_modeling(int* best_order, std::vector< std::vecto
             }
         }
         if( is_valid == false ) continue;
-        
+
         for(int i = 0; i < size; ++i) rank[order[i]] = i;
         int* cur_adj_mat;
         cur_adj_mat = new int[size*size];
@@ -1231,7 +1263,7 @@ void Schedule::new_performance_modeling(int* best_order, std::vector< std::vecto
                         invariant_size[j].push_back(c--);
 
                 for(int j = 0; j < invariant_size[i].size(); ++j)
-                    if(invariant_size[i][j] > 1) 
+                    if(invariant_size[i][j] > 1)
                         val += p_size[1] * pp_size[invariant_size[i][j] - 2] + p_size[1];
                 val += 1;
                 for(int j = 0; j < restricts_size; ++j)
@@ -1263,7 +1295,7 @@ void Schedule::new_performance_modeling(int* best_order, std::vector< std::vecto
 void Schedule::init_in_exclusion_optimize() {
     // 当前排列的Phase2中定义的k值,要求排列最后k个结点不直连
     int optimize_num = in_exclusion_optimize_num;
-    
+
     assert( in_exclusion_optimize_num > 1);
 
     int* id;
@@ -1315,7 +1347,7 @@ void Schedule::init_in_exclusion_optimize() {
                 else ++in_exclusion_val[ 2 * n - 2];
             }
         }
-    }        
+    }
 
     in_exclusion_optimize_group.clear();
     in_exclusion_optimize_val.clear();
@@ -1365,11 +1397,11 @@ void Schedule::get_in_exclusion_optimize_group(int depth, int* id, int id_cnt, i
         delete[] size;
         return;
     }
-    
+
     id[depth] = id_cnt;
 
     get_in_exclusion_optimize_group(depth + 1, id, id_cnt + 1, in_exclusion_val);
-    
+
     for(int i = 0; i < id_cnt; ++i) {
         id[depth] = i;
         get_in_exclusion_optimize_group(depth + 1, id, id_cnt, in_exclusion_val);
@@ -1410,7 +1442,7 @@ void Schedule::GraphZero_performance_modeling(int* best_order, int v_cnt, unsign
 
     order = new int[size];
     rank = new int[size];
-    
+
     for(int i = 0; i < size; ++i) order[i] = i;
     double min_val;
     bool have_best = false;
@@ -1430,7 +1462,7 @@ void Schedule::GraphZero_performance_modeling(int* best_order, int v_cnt, unsign
             }
         }
         if( is_valid == false ) continue;
-        
+
         for(int i = 0; i < size; ++i) rank[order[i]] = i;
         int* cur_adj_mat;
         cur_adj_mat = new int[size*size];
@@ -1486,7 +1518,7 @@ void Schedule::GraphZero_performance_modeling(int* best_order, int v_cnt, unsign
             min_val = val;
             printf("gz upd %.10lf\n", val);
         }
-        
+
         delete[] cur_adj_mat;
         delete[] sum;
         delete[] tmp;
@@ -1532,11 +1564,11 @@ void Schedule::restrict_selection(int v_cnt, unsigned int e_cnt, long long tri_c
         double* sum;
         sum = new double[restricts_size];
         for(int i = 0; i < restricts_size; ++i) sum[i] = 0;
-        
+
         int* tmp;
         tmp = new int[size];
         for(int i = 0; i < size; ++i) tmp[i] = i;
-        
+
         do {
             for(int i = 0; i < restricts_size; ++i)
                 if(tmp[restricts[i].first] > tmp[restricts[i].second]) {
@@ -1544,10 +1576,10 @@ void Schedule::restrict_selection(int v_cnt, unsigned int e_cnt, long long tri_c
                 }
                 else break;
         } while( std::next_permutation(tmp, tmp + size));
-        
+
         double total = 1;
         for(int i = 2; i <= size; ++i) total *= i;
-        
+
         for(int i = 0; i < restricts_size; ++i)
             sum[i] = sum[i] /total;
         for(int i = restricts_size - 1; i > 0; --i)
@@ -1555,7 +1587,7 @@ void Schedule::restrict_selection(int v_cnt, unsigned int e_cnt, long long tri_c
 
         double val = 1;
         for(int i = 0; i < size; ++i) invariant_size[i].clear();
-        
+
         for(int i = size - 1; i >= 0; --i) {
             int cnt_forward = 0;
             int cnt_backward = 0;
@@ -1572,21 +1604,21 @@ void Schedule::restrict_selection(int v_cnt, unsigned int e_cnt, long long tri_c
                     invariant_size[j].push_back(c--);
 
             for(int j = 0; j < invariant_size[i].size(); ++j)
-                if(invariant_size[i][j] > 1) 
+                if(invariant_size[i][j] > 1)
                     val += p_size[1] * pp_size[invariant_size[i][j] - 2] + p_size[1];
             val += 1;
             for(int j = 0; j < restricts_size; ++j)
                 if(restricts[j].second == i)
                     val *=  sum[j];
             val *= p_size[1] * pp_size[cnt_forward-1];
-        
+
         }
         if( have_best == false || val < min_val) {
             have_best = true;
             best_restricts = restricts;
             min_val = val;
         }
-        
+
         delete[] sum;
         delete[] tmp;
 
@@ -1602,20 +1634,33 @@ void Schedule::restricts_generate(const int* cur_adj_mat, std::vector< std::vect
     Schedule schedule(cur_adj_mat, get_size());
     // restricts中为多组限制条件
     schedule.aggressive_optimize_get_all_pairs(restricts);
+//    std::cout << "all restricts_vec:[\n";
+//    for (const auto &rs: restricts) {
+//        std::cout << " [";
+//        for (const auto &p: rs) {
+//            std::cout << "(" << p.first << ", " << p.second << ") ";
+//        }
+//        std::cout << "]\n";
+//    }
+//    std::cout << "]\n";
+
     int size = schedule.get_size();
     Graph* complete;
     DataLoader* D = new DataLoader();
     // 构造一个结点数为size+1的完全图
     // QUE:此处图结点数为什么是size+1,按照论文应该是size? ANS:结点数不重要,在有无限制条件下匹配的的比值都是同构数
-    assert(D->load_complete(complete, size + 1));
+    assert(D->load_complete(complete, size));
     // ans=ans_without/automorphisms_count, ans_without即不使用限制条件进行的完全图模式匹配
-    long long ans = complete->pattern_matching( schedule, 1) / schedule.get_multiplicity();
+    long long all = complete->pattern_matching( schedule, 1);
+    long long ans = all / schedule.get_multiplicity();
+//    std::cout << "ans: " << ans << std::endl;
+
     int thread_num = 1;
     for(int i = 0; i < restricts.size(); ) {
         Schedule cur_schedule(schedule.get_adj_mat_ptr(), schedule.get_size());
         // 设置限制条件
         cur_schedule.add_restrict(restricts[i]);
-        // ans_with即待限定条件后的完全图模式匹配
+        // ans_with即带限定条件后的完全图模式匹配
         long long cur_ans = complete->pattern_matching( cur_schedule, thread_num);
         // 不相等则不为正确的限制条件则移除
         if( cur_ans != ans) {
@@ -1676,7 +1721,7 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
     // 论文中的p_1=2*|E_G|/|V_G|^2
     double p0 = e_cnt * 1.0 / v_cnt / v_cnt;
     // 论文中的p_2=tri_cnt*|V_G|/(2*|E_G|)^2
-    double p1 = tri_cnt * 1.0 * v_cnt / e_cnt / e_cnt; 
+    double p1 = tri_cnt * 1.0 * v_cnt / e_cnt / e_cnt;
 
     // p_size[i]=p_size[i-1]*p0=v_cnt*(p0^i)=|V_G|*(p_1)^i
     //p_size[0]=|V_G|,p_size[1]=|V_G|*p_1
@@ -1705,7 +1750,7 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
 
     double sum[restricts_size];
     for(int i = 0; i < restricts_size; ++i) sum[i] = 0;
-    
+
     int tmp[size];
     for(int i = 0; i < size; ++i) tmp[i] = i;
     do {
@@ -1790,10 +1835,10 @@ double Schedule::our_estimate_schedule_restrict(const std::vector<int> &order, c
 
 double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &order, const std::vector< std::pair<int,int> > &pairs, int v_cnt, unsigned int e_cnt) {
     int max_degree = get_max_degree();
-    
+
     double p_size[max_degree];
     double p = e_cnt * 1.0 / v_cnt / v_cnt;
-    
+
     p_size[0] = v_cnt;
     for(int i = 1;i < max_degree; ++i) {
         p_size[i] = p_size[i-1] * p;
@@ -1801,7 +1846,7 @@ double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &or
 
     int rank[size];
     for(int i = 0; i < size; ++i) rank[order[i]] = i;
-    
+
     int* cur_adj_mat;
     cur_adj_mat = new int[size*size];
     for(int i = 0; i < size; ++i)
@@ -1811,10 +1856,10 @@ double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &or
     std::vector< std::pair<int,int> > restricts = pairs;
     int restricts_size = restricts.size();
     std::sort(restricts.begin(), restricts.end());
-    
+
     double sum[restricts_size];
     for(int i = 0; i < restricts_size; ++i) sum[i] = 0;
-    
+
     int tmp[size];
     for(int i = 0; i < size; ++i) tmp[i] = i;
     do {
@@ -1824,10 +1869,10 @@ double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &or
             }
             else break;
     } while( std::next_permutation(tmp, tmp + size));
-    
+
     double total = 1;
     for(int i = 2; i <= size; ++i) total *= i;
-    
+
     for(int i = 0; i < restricts_size; ++i)
         sum[i] = sum[i] /total;
     for(int i = restricts_size - 1; i > 0; --i)
@@ -1835,7 +1880,7 @@ double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &or
 
     std::vector<int> invariant_size[size];
     for(int i = 0; i < size; ++i) invariant_size[i].clear();
-    
+
     double val = 1;
     for(int i = size - 1; i >= 0; --i) {
         int cnt_forward = 0;
@@ -1853,7 +1898,7 @@ double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &or
                 invariant_size[j].push_back(c--);
 
         for(int j = 0; j < invariant_size[i].size(); ++j)
-            if(invariant_size[i][j] > 1) 
+            if(invariant_size[i][j] > 1)
                 val += p_size[invariant_size[i][j] - 1] + p_size[1];
         for(int j = 0; j < restricts_size; ++j)
             if(restricts[j].second == i)
@@ -1861,7 +1906,7 @@ double Schedule::GraphZero_estimate_schedule_restrict(const std::vector<int> &or
         val *= p_size[cnt_forward];
 
     }
-    
+
     delete[] cur_adj_mat;
 
     return val;
@@ -1873,21 +1918,21 @@ double Schedule::Naive_estimate_schedule_restrict(const std::vector<int> &order,
 
     int rank[size];
     for(int i = 0; i < size; ++i) rank[order[i]] = i;
-    
+
     int* cur_adj_mat;
     cur_adj_mat = new int[size*size];
     for(int i = 0; i < size; ++i)
         for(int j = 0; j < size; ++j)
             cur_adj_mat[INDEX(rank[i], rank[j], size)] = adj_mat[INDEX(i, j, size)];
-    
+
     std::vector< std::pair<int,int> > restricts = pairs;
     int restricts_size = restricts.size();
     std::sort(restricts.begin(), restricts.end());
-    
+
     double sum[restricts_size];
     for(int i = 0; i < restricts_size; ++i) sum[i] = 0;
     int tmp[size];
-    
+
     for(int i = 0; i < size; ++i) tmp[i] = i;
     do {
         for(int i = 0; i < restricts_size; ++i)
@@ -1896,10 +1941,10 @@ double Schedule::Naive_estimate_schedule_restrict(const std::vector<int> &order,
             }
             else break;
     } while( std::next_permutation(tmp, tmp + size));
-    
+
     double total = 1;
     for(int i = 2; i <= size; ++i) total *= i;
-    
+
     for(int i = 0; i < restricts_size; ++i)
         sum[i] = sum[i] /total;
     for(int i = restricts_size - 1; i > 0; --i)

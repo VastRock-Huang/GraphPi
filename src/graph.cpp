@@ -278,7 +278,7 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
         delete[] vertex_set;
         // TODO : Computing multiplicity for a pattern
         global_ans += local_ans;    // 将线程局部变量的计算结果加到总结过中
-        printf("time + 1\n");
+//        printf("time + 1\n");
 
     }
     // 除以使用容斥定理引入的冗余倍数,得到正确结果
