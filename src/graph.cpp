@@ -14,21 +14,19 @@
 #include <queue>
 #include <iostream>
 
-int Graph::intersection_size(int v1,int v2) {
+int Graph::intersection_size(int v1, int v2) {
     unsigned int l1, r1;
     get_edge_index(v1, l1, r1);
     unsigned int l2, r2;
     get_edge_index(v2, l2, r2);
     int ans = 0;
-    while(l1 < r1 && l2 < r2) {
-        if(edge[l1] < edge[l2]) {
+    while (l1 < r1 && l2 < r2) {
+        if (edge[l1] < edge[l2]) {
             ++l1;
-        }
-        else {
-            if(edge[l2] < edge[l1]) {
+        } else {
+            if (edge[l2] < edge[l1]) {
                 ++l2;
-            }
-            else {
+            } else {
                 ++l1;
                 ++l2;
                 ++ans;
@@ -63,7 +61,7 @@ int Graph::intersection_size(int v1,int v2) {
 }
 */
 
-int Graph::intersection_size_clique(int v1,int v2) {
+int Graph::intersection_size_clique(int v1, int v2) {
     unsigned int l1, r1;
     get_edge_index(v1, l1, r1);
     unsigned int l2, r2;
@@ -72,17 +70,15 @@ int Graph::intersection_size_clique(int v1,int v2) {
     int ans = 0;
     if (edge[l1] >= min_vertex || edge[l2] >= min_vertex)
         return 0;
-    while(l1 < r1 && l2 < r2) {
-        if(edge[l1] < edge[l2]) {
+    while (l1 < r1 && l2 < r2) {
+        if (edge[l1] < edge[l2]) {
             if (edge[++l1] >= min_vertex)
                 break;
-        }
-        else {
-            if(edge[l2] < edge[l1]) {
+        } else {
+            if (edge[l2] < edge[l1]) {
                 if (edge[++l2] >= min_vertex)
                     break;
-            }
-            else {
+            } else {
                 ++ans;
                 if (edge[++l1] >= min_vertex)
                     break;
@@ -96,13 +92,13 @@ int Graph::intersection_size_clique(int v1,int v2) {
 
 long long Graph::triangle_counting() {
     long long ans = 0;
-    for(int v = 0; v < v_cnt; ++v) {
+    for (int v = 0; v < v_cnt; ++v) {
         // for v in G
         unsigned int l, r;
         get_edge_index(v, l, r);
-        for(unsigned int v1 = l; v1 < r; ++v1) {
+        for (unsigned int v1 = l; v1 < r; ++v1) {
             //for v1 in N(v)
-            ans += intersection_size(v,edge[v1]);
+            ans += intersection_size(v, edge[v1]);
         }
     }
     ans /= 6;
@@ -121,45 +117,43 @@ long long Graph::triangle_counting_mt(int thread_count) {
 void Graph::tc_mt(long long *global_ans) {
     long long my_ans = 0;
 //    #pragma omp for schedule(dynamic)
-    for(int v = 0; v < v_cnt; ++v) {
+    for (int v = 0; v < v_cnt; ++v) {
         // for v in G
         unsigned int l, r;
         get_edge_index(v, l, r);
-        for(unsigned int v1 = l; v1 < r; ++v1) {
+        for (unsigned int v1 = l; v1 < r; ++v1) {
             if (v <= edge[v1])
                 break;
             //for v1 in N(v)
-            my_ans += intersection_size_clique(v,edge[v1]);
+            my_ans += intersection_size_clique(v, edge[v1]);
         }
     }
-    #pragma omp critical
+#pragma omp critical
     {
         *global_ans += my_ans;
     }
 }
 
 //! 获取v结点的边在edge数组中的范围,范围为[l,r-1]
-void Graph::get_edge_index(int v, unsigned int& l, unsigned int& r) const
-{
+void Graph::get_edge_index(int v, unsigned int &l, unsigned int &r) const {
     l = vertex[v];
     r = vertex[v + 1];
 }
 
-void Graph::pattern_matching_func(const Schedule& schedule, VertexSet* vertex_set, VertexSet& subtraction_set, long long& local_ans, int depth, bool clique)
-{
+void Graph::pattern_matching_func(const Schedule &schedule, VertexSet *vertex_set, VertexSet &subtraction_set,
+                                  long long &local_ans, int depth, bool clique) {
     int loop_set_prefix_id = schedule.get_loop_set_prefix_id(depth);
     int loop_size = vertex_set[loop_set_prefix_id].get_size();
     if (loop_size <= 0)
         return;
-    int* loop_data_ptr = vertex_set[loop_set_prefix_id].get_data_ptr();
+    int *loop_data_ptr = vertex_set[loop_set_prefix_id].get_data_ptr();
     /*if (clique == true)
       {
       int last_vertex = subtraction_set.get_last();
     // The number of this vertex must be greater than the number of last vertex.
     loop_start = std::upper_bound(loop_data_ptr, loop_data_ptr + loop_size, last_vertex) - loop_data_ptr;
     }*/
-    if (depth == schedule.get_size() - 1)
-    {
+    if (depth == schedule.get_size() - 1) {
         // TODO : try more kinds of calculation.
         // For example, we can maintain an ordered set, but it will cost more to maintain itself when entering or exiting recursion.
         if (clique == true)
@@ -170,8 +164,7 @@ void Graph::pattern_matching_func(const Schedule& schedule, VertexSet* vertex_se
     }
 
     int last_vertex = subtraction_set.get_last();
-    for (int i = 0; i < loop_size; ++i)
-    {
+    for (int i = 0; i < loop_size; ++i) {
         if (last_vertex <= loop_data_ptr[i] && clique == true)
             break;
         int vertex = loop_data_ptr[i];
@@ -181,15 +174,15 @@ void Graph::pattern_matching_func(const Schedule& schedule, VertexSet* vertex_se
         unsigned int l, r;
         get_edge_index(vertex, l, r);
         bool is_zero = false;
-        for (int prefix_id = schedule.get_last(depth); prefix_id != -1; prefix_id = schedule.get_next(prefix_id))
-        {
-            vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l], (int)r - l, prefix_id, vertex, clique);
-            if( vertex_set[prefix_id].get_size() == 0) {
+        for (int prefix_id = schedule.get_last(depth); prefix_id != -1; prefix_id = schedule.get_next(prefix_id)) {
+            vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l], (int) r - l, prefix_id, vertex,
+                                                   clique);
+            if (vertex_set[prefix_id].get_size() == 0) {
                 is_zero = true;
                 break;
             }
         }
-        if( is_zero ) continue;
+        if (is_zero) continue;
         //subtraction_set.insert_ans_sort(vertex);
         subtraction_set.push_back(vertex);
         pattern_matching_func(schedule, vertex_set, subtraction_set, local_ans, depth + 1, clique);
@@ -197,8 +190,7 @@ void Graph::pattern_matching_func(const Schedule& schedule, VertexSet* vertex_se
     }
 }
 
-long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bool clique)
-{
+long long Graph::pattern_matching(const Schedule &schedule, int thread_count, bool clique) {
     long long global_ans = 0;
 // omp parallel: OpenMP定义并行区域
 // num_threads(): 设置线程数
@@ -207,7 +199,7 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
     {
         double start_time = get_wall_time();
         double current_time;
-        VertexSet* vertex_set = new VertexSet[schedule.get_total_prefix_num()];
+        VertexSet *vertex_set = new VertexSet[schedule.get_total_prefix_num()];
         VertexSet subtraction_set;
         VertexSet tmp_set;
         subtraction_set.init();
@@ -219,21 +211,19 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
 // nowait: 取消for循环后的隐含屏障
 //#pragma omp for schedule(dynamic) nowait
         // 遍历输入数据图的每个结点
-        for (int vertex = 0; vertex < v_cnt; ++vertex)
-        {
+        for (int vertex = 0; vertex < v_cnt; ++vertex) {
             unsigned int l, r;  // 结点vertex在edge数组中的范围[l,r-1]
             get_edge_index(vertex, l, r);
             // 遍历以模式图中0结点结尾的前缀prefix
             // 经过该循环后,所有以0结点为结尾的前缀的结点集都被设置为了当前在数据图在匹配的结点vertex的邻域
             //理论上以0结点为结尾的前缀只有一个,但该前缀对应的结点不止一个,但至少1结点满足
-            for (int prefix_id = schedule.get_last(0); prefix_id != -1; prefix_id = schedule.get_next(prefix_id))
-            {
+            for (int prefix_id = schedule.get_last(0); prefix_id != -1; prefix_id = schedule.get_next(prefix_id)) {
                 // 求以0结点结尾前缀的父前缀的结点集vertex_set[father_id]与结点vertex的邻域(input_data)的交集
                 // 理论上讲结点0是第一个结点,以0为结尾的前缀应该没有父结点,
                 //因此vertex_set[prefix_id]=input_data
 
                 vertex_set[prefix_id].build_vertex_set(schedule, vertex_set,
-                                                       &edge[l], (int)r - l,prefix_id);
+                                                       &edge[l], (int) r - l, prefix_id);
                 /*
                 if(vertex_set[prefix_id].get_size()==r-l){
                     for (int j = 0; j < vertex_set[prefix_id].get_size(); ++j) {
@@ -290,9 +280,10 @@ long long Graph::pattern_matching(const Schedule& schedule, int thread_count, bo
 //! \param[in] depth 匹配深度,也可以视为第depth个结点,因为结点序号就是匹配的顺序, from 1 to size-1(size为模式图结点数)
 //! \param[in] subtraction_set 当前已匹配的结点集,subtraction_set[i]对应着模式图中的第i个结点
 //! \param[in] vertex_set 每个前缀的候选结点集,vertex_set[prefix_id]即以prefix_id号前缀为前缀的数据图中的所有结点
-void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet* vertex_set,
-                                             VertexSet& subtraction_set, VertexSet& tmp_set,
-                                             long long& local_ans, int depth) // 3 same # or @ in comment are useful in code generation ###
+void Graph::pattern_matching_aggressive_func(const Schedule &schedule, VertexSet *vertex_set,
+                                             VertexSet &subtraction_set, VertexSet &tmp_set,
+                                             long long &local_ans,
+                                             int depth) // 3 same # or @ in comment are useful in code generation ###
 {
     // depth结点的前缀索引
     //第1次调用时获取的为第1个结点的前缀索引,理论上该前缀为[0],即只有第0个结点
@@ -305,7 +296,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
         return;
     // depth结点的前缀的结点集
     //depth结点的前缀一定以x(0<=x<depth)结点结尾,因此在上层递归调用中已经求出
-    int* loop_data_ptr = vertex_set[loop_set_prefix_id].get_data_ptr();
+    int *loop_data_ptr = vertex_set[loop_set_prefix_id].get_data_ptr();
 /* @@@ 
     //Case: in_exclusion_optimize_num = 2
     if (depth == schedule.get_size() - 2 && schedule.get_in_exclusion_optimize_num() == 2) { 
@@ -359,43 +350,42 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
     //Case: in_exclusion_optimize_num > 1
     // 若匹配的深度达到了倒数第k个
     //若未使用容斥定理,k=0,不会递归到该深度,则以下代码不会生效
-    if( depth == schedule.get_size() - schedule.get_in_exclusion_optimize_num() ) {
+    if (depth == schedule.get_size() - schedule.get_in_exclusion_optimize_num()) {
         // 容斥定理的k值
         int in_exclusion_optimize_num = schedule.get_in_exclusion_optimize_num();// @@@
         // 倒数k个结点的前缀索引的数组
-        int loop_set_prefix_ids[ in_exclusion_optimize_num ];
+        int loop_set_prefix_ids[in_exclusion_optimize_num];
         loop_set_prefix_ids[0] = loop_set_prefix_id;
-        for(int i = 1; i < in_exclusion_optimize_num; ++i)
-            loop_set_prefix_ids[i] = schedule.get_loop_set_prefix_id( depth + i );
+        for (int i = 1; i < in_exclusion_optimize_num; ++i)
+            loop_set_prefix_ids[i] = schedule.get_loop_set_prefix_id(depth + i);
         // 遍历每种容斥定理的情况
-        for(int optimize_rank = 0; optimize_rank < schedule.in_exclusion_optimize_group.size(); ++optimize_rank) {
-            const std::vector< std::vector<int> >& cur_graph = schedule.in_exclusion_optimize_group[optimize_rank];
+        for (int optimize_rank = 0; optimize_rank < schedule.in_exclusion_optimize_group.size(); ++optimize_rank) {
+            const std::vector<std::vector<int> > &cur_graph = schedule.in_exclusion_optimize_group[optimize_rank];
             long long val = schedule.in_exclusion_optimize_val[optimize_rank];
             // 遍历一种容斥定理分组情况的每个分组,并求交集
-            for(int cur_graph_rank = 0; cur_graph_rank < cur_graph.size(); ++ cur_graph_rank) {
+            for (int cur_graph_rank = 0; cur_graph_rank < cur_graph.size(); ++cur_graph_rank) {
                 //                VertexSet tmp_set;
 
                 //if size == 1 , we will not call intersection(...)
                 //so we will not allocate memory for data
                 //otherwise, we need to copy the data to do intersection(...)
-                if(cur_graph[cur_graph_rank].size() == 1) {
+                if (cur_graph[cur_graph_rank].size() == 1) {
                     int id = loop_set_prefix_ids[cur_graph[cur_graph_rank][0]];
                     val = val * VertexSet::unorderd_subtraction_size(vertex_set[id], subtraction_set);
-                }
-                else {
+                } else {
                     // 求多个结点集的交集
                     int id0 = loop_set_prefix_ids[cur_graph[cur_graph_rank][0]];
                     int id1 = loop_set_prefix_ids[cur_graph[cur_graph_rank][1]];
                     tmp_set.init(this->max_degree);
                     tmp_set.intersection(vertex_set[id0], vertex_set[id1]);
 
-                    for(int i = 2; i < cur_graph[cur_graph_rank].size(); ++i) {
+                    for (int i = 2; i < cur_graph[cur_graph_rank].size(); ++i) {
                         int id = loop_set_prefix_ids[cur_graph[cur_graph_rank][i]];
                         tmp_set.intersection_with(vertex_set[id]);
                     }
                     val = val * VertexSet::unorderd_subtraction_size(tmp_set, subtraction_set);
                 }
-                if( val == 0 ) break;
+                if (val == 0) break;
 
             }
             local_ans += val;
@@ -405,8 +395,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
     }
     //Case: in_exclusion_optimize_num <= 1
     // 匹配深度到达最后一个结点
-    if (depth == schedule.get_size() - 1)
-    {
+    if (depth == schedule.get_size() - 1) {
         // TODO : try more kinds of calculation. @@@
         // For example, we can maintain an ordered set, but it will cost more to maintain itself when entering or exiting recursion.
         if (schedule.get_total_restrict_num() > 0)  // 限制条件数量>0
@@ -419,10 +408,11 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
                     min_vertex = subtraction_set.get_data(schedule.get_restrict_index(i));
             }
             // depth结点的前缀的结点集
-            const VertexSet& vset = vertex_set[loop_set_prefix_id];
+            const VertexSet &vset = vertex_set[loop_set_prefix_id];
             // lower_bound():得到首个不小于某数的迭代器
             // 小于min_vertex结点的数量
-            int size_after_restrict = std::lower_bound(vset.get_data_ptr(), vset.get_data_ptr() + vset.get_size(), min_vertex)
+            int size_after_restrict =
+                    std::lower_bound(vset.get_data_ptr(), vset.get_data_ptr() + vset.get_size(), min_vertex)
                     - vset.get_data_ptr();
             if (size_after_restrict > 0) {
                 // 将候选结点的前size_after_restrict结点排除已匹配的结点,剩余的阶段即为满足的结点
@@ -434,8 +424,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
 //                }
 //                printf("\n");
             }
-        }
-        else {  // 若无限制条件
+        } else {  // 若无限制条件
             // 则候选结点集减去已匹配的结点,剩余结点的数量就是满足模式图的数量
             local_ans += VertexSet::unorderd_subtraction_size(vertex_set[loop_set_prefix_id], subtraction_set);
         }
@@ -466,8 +455,7 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
     int ii = 0;
     // 遍历depth结点的前缀的结点集
     //由于求交集intersection()算法的特性,以序号从小到大进行遍历
-    for (int &i = ii; i < loop_size; ++i)
-    {
+    for (int &i = ii; i < loop_size; ++i) {
         // 若min_vertex不大于depth结点的前缀的结点集中的第i个结点,则退出
         //对于限制条件,数据图结点满足的大小关系和模式图中结点满足的大小关系正好相反
         //如限制条件(a,b),在模式图中是vertex_a<vertex_b,而在匹配的数据图中是vertex_a>vertex_b
@@ -484,22 +472,21 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
         get_edge_index(vertex, l, r);
         bool is_zero = false;
         // 遍历以depth结点为结尾的前缀
-        for (int prefix_id = schedule.get_last(depth); prefix_id != -1; prefix_id = schedule.get_next(prefix_id))
-        {
+        for (int prefix_id = schedule.get_last(depth); prefix_id != -1; prefix_id = schedule.get_next(prefix_id)) {
             // 求以depth结点结尾前缀的父前缀的结点集vertex_set[father_id]与结点vertex的领域(input_data)的交集
             //以depth结点结尾的前缀的父前缀实际上就是上一个匹配结点结尾的前缀,该函数实际上就是求交集操作,
             //求出了以当前已匹配结点为前缀的所有候选结点,因为相同的前缀的候选结点的范围是相同的
             vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l],
-                                                   (int)r - l, prefix_id, vertex);
+                                                   (int) r - l, prefix_id, vertex);
             // 若交集为空则退出循环
-            if( vertex_set[prefix_id].get_size() == 0) {
+            if (vertex_set[prefix_id].get_size() == 0) {
                 is_zero = true;
                 break;
             }
         }
         // 有以depth结点为结尾的前缀, 但交集为零
         //则下一深度的候选结点不存在,则跳过本次循环判断另一个本深度的候选结点
-        if( is_zero ) continue;
+        if (is_zero) continue;
         //subtraction_set.insert_ans_sort(vertex);
         // 置入本次匹配的结点
         subtraction_set.push_back(vertex);
@@ -510,9 +497,9 @@ void Graph::pattern_matching_aggressive_func(const Schedule& schedule, VertexSet
     }
     //if (depth == 1 && ii < loop_size) Graphmpi::getinstance().set_cur(subtraction_set.get_data(0));// @@@
 }
+
 // ###
-long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count, bool clique)
-{
+long long Graph::pattern_matching_mpi(const Schedule &schedule, int thread_count, bool clique) {
     Graphmpi &gm = Graphmpi::getinstance();     // 获取Graphmpi对象
     long long global_ans = 0;
 // 并行
@@ -532,7 +519,7 @@ long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count
 
         // 非主线程运行
         if (omp_get_thread_num()) {
-            VertexSet* vertex_set = new VertexSet[schedule.get_total_prefix_num()];
+            VertexSet *vertex_set = new VertexSet[schedule.get_total_prefix_num()];
             long long local_ans = 0;    // 线程局部匹配结果
             VertexSet subtraction_set;  // 已匹配结点集
             VertexSet tmp_set;
@@ -546,7 +533,8 @@ long long Graph::pattern_matching_mpi(const Schedule& schedule, int thread_count
                     unsigned int l, r;
                     get_edge_index(vertex, l, r);
                     // 设置0结点为结尾的前缀的结点集为当前匹配结点vertex的邻域
-                    for (int prefix_id = schedule.get_last(0); prefix_id != -1; prefix_id = schedule.get_next(prefix_id)) {
+                    for (int prefix_id = schedule.get_last(0);
+                         prefix_id != -1; prefix_id = schedule.get_next(prefix_id)) {
                         vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, edge + l, r - l, prefix_id);
                     }
                     subtraction_set.push_back(vertex);

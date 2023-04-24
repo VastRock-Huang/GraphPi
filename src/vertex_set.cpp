@@ -173,8 +173,7 @@ void VertexSet::build_vertex_set(const Schedule& schedule, const VertexSet* vert
     int father_id = schedule.get_father_prefix_id(prefix_id);
     if (father_id == -1) {  // 若无父前缀,则初始化为该结点的边数组
         init(input_size, input_data);
-    }
-    else  {
+    } else {
         init();
         VertexSet tmp_vset;
         tmp_vset.init(input_size, input_data);
