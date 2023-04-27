@@ -10,6 +10,7 @@ motif_generator.cpp
 graphmpi.cpp
 common.cpp
 disjoint_set_union.cpp
+stats.cpp
 )
 
 ADD_LIBRARY(graph_mining SHARED ${GraphMiningSrc}) 

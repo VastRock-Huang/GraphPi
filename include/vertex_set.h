@@ -1,5 +1,7 @@
 #pragma once
 #include "schedule.h"
+#include "stats.h"
+
 class VertexSet
 {
 public:
@@ -30,6 +32,11 @@ public:
     static int max_intersection_size;
     void build_vertex_set(const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
                           int input_size, int prefix_id, int min_vertex = -1, bool clique = false);
+
+    void build_vertex_set(Stats& stats ,const Schedule& schedule, const VertexSet* vertex_set, int* input_data,
+                          int input_size, int prefix_id);
+    void intersection(Stats& stats, const VertexSet& set0, const VertexSet& set1);
+
 private:
     int* data;
     int size;

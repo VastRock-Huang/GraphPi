@@ -14,7 +14,7 @@ void test_pattern(Graph* g, const Pattern &pattern, int performance_modeling_typ
                   int restricts_type, bool use_in_exclusion_optimize = false) {
     int thread_num = 24;
     double t1,t2;
-    
+
     bool is_pattern_valid;
     Schedule schedule(pattern, is_pattern_valid, performance_modeling_type,
                       restricts_type, use_in_exclusion_optimize, g->v_cnt, g->e_cnt, g->tri_cnt);
@@ -26,12 +26,16 @@ void test_pattern(Graph* g, const Pattern &pattern, int performance_modeling_typ
         printf("(%d,%d)",p.first,p.second);
     puts("\n");
 
+    double tt{};
     t1 = get_wall_time();
+    g->stats.start(tt);
     long long ans = g->pattern_matching(schedule, thread_num);
+    g->stats.end(TOTAL, tt);
     t2 = get_wall_time();
     printf("---------------------\noutput:\n");
     printf("ans %lld\n", ans);
     printf("time %.6lf\n", t2 - t1);
+    std::cout << g->stats.ToString() << std::endl;
     fflush(stdout);
 
 }
@@ -50,7 +54,7 @@ int main(int argc,char *argv[]) {
 
     const std::string type = argv[1];
     const std::string path = argv[2];
-    
+
     int size = atoi(argv[3]);
     char* adj_mat = argv[4];
 
@@ -58,7 +62,7 @@ int main(int argc,char *argv[]) {
     int test_type = 1; // performance_modeling_type = restricts_type = use_in_exclusion_optimize = 1
 
     DataType my_type;
-    
+
     GetDataType(my_type, type);
 
     if(my_type == DataType::Invalid) {
@@ -66,7 +70,7 @@ int main(int argc,char *argv[]) {
         return 0;
     }
 
-    assert(D.load_data(g,my_type,path.c_str())==true); 
+    assert(D.load_data(g,my_type,path.c_str())==true);
 
     printf("Load data success!\n");
     fflush(stdout);

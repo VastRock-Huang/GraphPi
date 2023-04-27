@@ -1,6 +1,8 @@
 #pragma once
 #include "schedule.h"
 #include "vertex_set.h"
+#include "stats.h"
+
 #include <assert.h>
 
 class Graphmpi;
@@ -48,6 +50,8 @@ public:
     long long pattern_matching_mpi(const Schedule& schedule, int thread_count, bool clique = false);
 
     int max_degree;
+
+    Stats stats{};
 private:
     friend Graphmpi;
     void tc_mt(long long * global_ans);

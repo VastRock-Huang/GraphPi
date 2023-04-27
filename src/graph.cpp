@@ -222,7 +222,7 @@ long long Graph::pattern_matching(const Schedule &schedule, int thread_count, bo
                 // 理论上讲结点0是第一个结点,以0为结尾的前缀应该没有父结点,
                 //因此vertex_set[prefix_id]=input_data
 
-                vertex_set[prefix_id].build_vertex_set(schedule, vertex_set,
+                vertex_set[prefix_id].build_vertex_set(stats, schedule, vertex_set,
                                                        &edge[l], (int) r - l, prefix_id);
                 /*
                 if(vertex_set[prefix_id].get_size()==r-l){
@@ -476,8 +476,8 @@ void Graph::pattern_matching_aggressive_func(const Schedule &schedule, VertexSet
             // 求以depth结点结尾前缀的父前缀的结点集vertex_set[father_id]与结点vertex的领域(input_data)的交集
             //以depth结点结尾的前缀的父前缀实际上就是上一个匹配结点结尾的前缀,该函数实际上就是求交集操作,
             //求出了以当前已匹配结点为前缀的所有候选结点,因为相同的前缀的候选结点的范围是相同的
-            vertex_set[prefix_id].build_vertex_set(schedule, vertex_set, &edge[l],
-                                                   (int) r - l, prefix_id, vertex);
+            vertex_set[prefix_id].build_vertex_set(stats, schedule, vertex_set, &edge[l],
+                                                   (int) r - l, prefix_id);
             // 若交集为空则退出循环
             if (vertex_set[prefix_id].get_size() == 0) {
                 is_zero = true;

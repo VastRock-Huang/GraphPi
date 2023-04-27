@@ -122,6 +122,47 @@ void VertexSet::intersection(const VertexSet& set0, const VertexSet& set1, int m
     }
 }
 
+
+void VertexSet::intersection(Stats &stats, const VertexSet &set0, const VertexSet &set1) {
+    //set0和set1中的结点应该是升序排列的
+
+    // 若两结点集VertexSet相同则拷贝结点集到内部数组
+    if (&set0 == &set1)
+    {
+        copy(set0.get_size(), set0.get_data_ptr());
+        return;
+    }
+    int i = 0;
+    int j = 0;
+    int size0 = set0.get_size();
+    int size1 = set1.get_size();
+
+    int data0 = set0.get_data(0);
+    int data1 = set1.get_data(0);
+
+    // 将set0和set1中所有相同的结点存入VertexSet内部数组
+    while (i < size0 && j < size1) {
+        data0 = set0.get_data(i);
+        data1 = set1.get_data(j);
+        if (data0 < data1) {
+            stats.inc(CMP_COND);
+            ++i;
+            stats.inc(MOVE_IDX);
+        } else if (data0 > data1) {
+            stats.add(CMP_COND, 2);
+            ++j;
+            stats.inc(MOVE_IDX);
+        } else {
+            stats.add(CMP_COND, 2);
+            push_back(data0);
+            stats.inc(PUSH_VAL);
+            ++i;
+            ++j;
+            stats.add(MOVE_IDX, 2);
+        }
+    }
+}
+
 // 求当前结点集和set1结点集的交集
 void VertexSet::intersection_with(const VertexSet& set1) {
     if (this == &set1)
@@ -179,6 +220,25 @@ void VertexSet::build_vertex_set(const Schedule& schedule, const VertexSet* vert
         tmp_vset.init(input_size, input_data);
         // 求vertex[father_id]和tmp_vset的结点交集
         intersection(vertex_set[father_id], tmp_vset, min_vertex, clique);
+    }
+}
+
+
+void VertexSet::build_vertex_set(Stats &stats, const Schedule &schedule, const VertexSet *vertex_set, int *input_data,
+                                 int input_size, int prefix_id) {
+    // 父前缀索引
+    int father_id = schedule.get_father_prefix_id(prefix_id);
+    if (father_id == -1) {  // 若无父前缀,则初始化为该结点的边数组
+        init(input_size, input_data);
+    } else {
+        init();
+        VertexSet tmp_vset;
+        tmp_vset.init(input_size, input_data);
+        // 求vertex[father_id]和tmp_vset的结点交集
+        double t{};
+        stats.start(t);
+        intersection(stats, vertex_set[father_id], tmp_vset);
+        stats.end(INTERSECT, t);
     }
 }
 
